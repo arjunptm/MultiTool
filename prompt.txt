@@ -1,0 +1,119 @@
+You are helping me continue development on a Python desktop application called **MultiTool**.
+
+## Project Overview
+
+This is a **Windows-only personal utility suite** built in Python using **PySide6 (Qt for Python)**.
+
+The app is designed as a **scalable framework** where:
+
+* There is a main launcher/home screen
+* It displays a list of available tools
+* Clicking a tool navigates to its page
+* Each tool is modular and lives in its own folder
+* New tools should be easy to add without modifying core architecture
+
+## Key Design Principles
+
+* Clean, modular, scalable architecture
+* Beginner-friendly but structured for growth
+* Avoid unnecessary complexity or over-engineering
+* Prefer readability over cleverness
+* All dependencies should be installable via pip (no OS-level setup)
+* UI should be simple, clean, and practical (not fancy)
+
+## Tech Stack
+
+* Python
+* PySide6 (Qt for GUI)
+
+## Current Architecture (IMPORTANT)
+
+* `app.py` → entry point
+* `app/main_window.py` → handles navigation via QStackedWidget
+* `app/core/tool_registry.py` → central registry of tools
+* `app/ui/` → shared UI (home page, widgets, styles, base tool page)
+* `app/tools/<tool_name>/page.py` → each tool has its own page class
+* Each tool inherits from `ToolPageBase`
+* Navigation is controlled centrally (Home ↔ Tool pages)
+
+## How Tools Work
+
+Each tool:
+
+* Has a `ToolDefinition` entry in `tool_registry.py`
+* Has a `page.py` with a QWidget subclass
+* Uses `ToolPageBase` for consistent layout
+* Is automatically shown on the home screen
+
+## What I Expect From You
+
+When I ask for help:
+
+1. **Understand the existing architecture first**
+
+   * Do NOT rewrite the whole app unless explicitly asked
+   * Extend the current structure
+
+2. **Follow existing patterns**
+
+   * Match file structure, naming, and code style
+   * Keep consistency with how current tools are implemented
+
+3. **Keep code clean and modular**
+
+   * Separate UI from logic when appropriate
+   * Suggest creating helper/service files inside tool folders if needed
+
+4. **Be practical and opinionated**
+
+   * Recommend good patterns, but avoid overengineering
+   * This is a personal tool, not a large enterprise system
+
+5. **When adding a new feature/tool**
+
+   * Show exactly which files to create or modify
+   * Provide full code (not partial snippets unless small change)
+   * Explain where each piece fits
+
+6. **When modifying existing code**
+
+   * Clearly indicate what changed
+   * Prefer minimal, safe edits
+
+7. **Assume I will paste your code directly**
+
+   * Keep it runnable
+   * Avoid missing imports or dependencies
+
+## My Preferences
+
+* Use 2-space indentation in Python
+* Keep UI straightforward and usable
+* Avoid unnecessary abstractions
+* Prefer clarity over compactness
+
+## Typical Next Tasks
+
+Examples of what I may ask:
+
+* Implement a real tool (e.g., PDF combiner, image resizer)
+* Add file dialogs, drag-and-drop, or previews
+* Improve UI layout or usability
+* Add progress indicators or threading for long tasks
+* Package into a Windows executable (.exe)
+
+## Important Constraint
+
+This is **framework-first development**:
+
+* Do NOT break the scalable structure
+* Any new feature should fit cleanly into the architecture
+
+---
+
+I have attached a ZIP of the current project.
+Start by:
+
+1. Reviewing the project structure
+2. Summarizing your understanding briefly
+3. Then proceed with the requested task

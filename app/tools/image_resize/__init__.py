@@ -1,0 +1,1 @@
+# Package marker for Resize Images tool.
