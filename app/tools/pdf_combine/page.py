@@ -11,11 +11,8 @@ from PySide6.QtWidgets import (
   QFrame,
   QHBoxLayout,
   QLabel,
-  QListWidget,
-  QListWidgetItem,
   QMenu,
   QMessageBox,
-  QPushButton,
   QSplitter,
   QToolButton,
   QVBoxLayout,
@@ -26,6 +23,7 @@ from app.tools.pdf_combine.service import (
   combine_pdfs,
   flatten_and_combine_pdfs,
 )
+from app.ui.file_widgets import FileSelectionPanel
 from app.ui.tool_page_base import ToolPageBase
 
 
@@ -45,34 +43,6 @@ class CombineMode:
   button_label: str
   description: str
   flatten: bool = False
-
-
-class PdfFileListWidget(QListWidget):
-  """
-  File list widget for PDFs.
-
-  Supports:
-  - single selection
-  - drag-and-drop reordering
-  - storing full file path in UserRole
-  """
-
-  def __init__(self):
-    super().__init__()
-
-    self.setSelectionMode(QListWidget.SelectionMode.SingleSelection)
-    self.setDragDropMode(QListWidget.DragDropMode.InternalMove)
-    self.setDefaultDropAction(Qt.DropAction.MoveAction)
-    self.setAlternatingRowColors(True)
-    self.setMinimumWidth(320)
-
-  def get_ordered_paths(self) -> list[str]:
-    paths = []
-    for index in range(self.count()):
-      item = self.item(index)
-      if item is not None:
-        paths.append(item.data(Qt.ItemDataRole.UserRole))
-    return paths
 
 
 class PdfCombinePage(ToolPageBase):
@@ -170,12 +140,12 @@ class PdfCombinePage(ToolPageBase):
     self._mode_actions = {}
 
     for mode in self.combine_modes.values():
-        action = QAction(mode.menu_label, self)
-        action.triggered.connect(
-            lambda checked=False, mode_id=mode.mode_id: self._set_current_mode(mode_id)
-        )
-        self.combine_menu.addAction(action)
-        self._mode_actions[mode.mode_id] = action
+      action = QAction(mode.menu_label, self)
+      action.triggered.connect(
+        lambda checked=False, mode_id=mode.mode_id: self._set_current_mode(mode_id)
+      )
+      self.combine_menu.addAction(action)
+      self._mode_actions[mode.mode_id] = action
 
     self.combine_button.setMenu(self.combine_menu)
 
@@ -184,43 +154,13 @@ class PdfCombinePage(ToolPageBase):
     self.content_layout.addLayout(bottom_row)
 
   def _build_left_panel(self) -> QWidget:
-    panel = QFrame()
-    panel.setObjectName("toolCard")
-
-    layout = QVBoxLayout(panel)
-    layout.setContentsMargins(16, 16, 16, 16)
-    layout.setSpacing(12)
-
-    title = QLabel("Selected PDF Files")
-    title.setObjectName("sectionTitle")
-
-    subtitle = QLabel(
-      "Drag files to reorder them. Top goes first in the final combined PDF."
+    self.file_panel = FileSelectionPanel(
+      title="Selected PDF Files",
+      subtitle="Drag files to reorder them. Top goes first in the final combined PDF.",
+      add_button_text="Add Files",
+      remove_button_text="Remove Selected",
     )
-    subtitle.setObjectName("pageSubtitle")
-    subtitle.setWordWrap(True)
-
-    self.file_list = PdfFileListWidget()
-
-    button_row = QHBoxLayout()
-
-    self.add_files_button = QPushButton("Add Files")
-    self.remove_selected_button = QPushButton("Remove Selected")
-    self.remove_selected_button.setObjectName("secondaryButton")
-
-    button_row.addWidget(self.add_files_button)
-    button_row.addWidget(self.remove_selected_button)
-
-    self.file_count_label = QLabel("0 files selected")
-    self.file_count_label.setObjectName("pageSubtitle")
-
-    layout.addWidget(title)
-    layout.addWidget(subtitle)
-    layout.addWidget(self.file_list)
-    layout.addLayout(button_row)
-    layout.addWidget(self.file_count_label)
-
-    return panel
+    return self.file_panel
 
   def _build_right_panel(self) -> QWidget:
     panel = QFrame()
@@ -254,14 +194,14 @@ class PdfCombinePage(ToolPageBase):
     return panel
 
   def _connect_signals(self) -> None:
-    self.add_files_button.clicked.connect(self._on_add_files_clicked)
-    self.remove_selected_button.clicked.connect(self._on_remove_selected_clicked)
+    self.file_panel.add_requested.connect(self._on_add_files_clicked)
+    self.file_panel.remove_requested.connect(self._on_remove_selected_clicked)
     self.combine_button.clicked.connect(self._on_primary_combine_clicked)
 
-    self.file_list.currentItemChanged.connect(self._on_current_item_changed)
-    self.file_list.model().rowsMoved.connect(self._on_rows_moved)
+    self.file_panel.selection_changed.connect(self._on_current_item_changed)
+    self.file_panel.order_changed.connect(self._on_rows_moved)
 
-    delete_shortcut = QShortcut(QKeySequence(Qt.Key.Key_Delete), self.file_list)
+    delete_shortcut = QShortcut(QKeySequence(Qt.Key.Key_Delete), self.file_panel.file_list)
     delete_shortcut.activated.connect(self._on_remove_selected_clicked)
 
   def _set_current_mode(self, mode_id: str) -> None:
@@ -316,8 +256,8 @@ class PdfCombinePage(ToolPageBase):
 
     self._update_file_count_label()
 
-    if self.file_list.count() > 0 and self.file_list.currentItem() is None:
-      self.file_list.setCurrentRow(0)
+    if self.file_panel.count() > 0 and self.file_panel.current_item() is None:
+      self.file_panel.set_current_row(0)
 
     if duplicate_count > 0:
       QMessageBox.information(
@@ -328,15 +268,10 @@ class PdfCombinePage(ToolPageBase):
       )
 
   def _add_file_item(self, file_path: str) -> None:
-    path = Path(file_path)
-
-    item = QListWidgetItem(path.name)
-    item.setData(Qt.ItemDataRole.UserRole, str(path))
-    item.setToolTip(str(path))
-    self.file_list.addItem(item)
+    self.file_panel.add_file_item(file_path)
 
   def _on_remove_selected_clicked(self) -> None:
-    current_row = self.file_list.currentRow()
+    current_row = self.file_panel.file_list.currentRow()
     if current_row < 0:
       QMessageBox.information(
         self,
@@ -345,7 +280,7 @@ class PdfCombinePage(ToolPageBase):
       )
       return
 
-    item = self.file_list.takeItem(current_row)
+    item = self.file_panel.remove_selected()
     if item is None:
       return
 
@@ -357,13 +292,13 @@ class PdfCombinePage(ToolPageBase):
 
     self._update_file_count_label()
 
-    if self.file_list.count() == 0:
+    if self.file_panel.count() == 0:
       self._clear_preview()
     else:
-      new_row = min(current_row, self.file_list.count() - 1)
-      self.file_list.setCurrentRow(new_row)
+      new_row = min(current_row, self.file_panel.count() - 1)
+      self.file_panel.set_current_row(new_row)
 
-  def _on_current_item_changed(self, current: QListWidgetItem, previous: QListWidgetItem) -> None:
+  def _on_current_item_changed(self, current, previous) -> None:
     del previous
 
     if current is None:
@@ -373,8 +308,7 @@ class PdfCombinePage(ToolPageBase):
     pdf_path = current.data(Qt.ItemDataRole.UserRole)
     self._load_preview(pdf_path)
 
-  def _on_rows_moved(self, parent, start, end, destination, row) -> None:
-    del parent, start, end, destination, row
+  def _on_rows_moved(self) -> None:
     self._update_file_count_label()
 
   def _load_preview(self, pdf_path: str) -> None:
@@ -400,7 +334,7 @@ class PdfCombinePage(ToolPageBase):
     self.preview_path_label.setText("")
 
   def _on_combine_clicked(self, mode: CombineMode) -> None:
-    ordered_paths = self.file_list.get_ordered_paths()
+    ordered_paths = self.file_panel.get_paths()
 
     if not ordered_paths:
       QMessageBox.warning(
@@ -474,9 +408,9 @@ class PdfCombinePage(ToolPageBase):
     )
 
   def _update_file_count_label(self) -> None:
-    count = self.file_list.count()
+    count = self.file_panel.count()
     suffix = "file" if count == 1 else "files"
-    self.file_count_label.setText(f"{count} {suffix} selected")
+    self.file_panel.set_count_text(f"{count} {suffix} selected")
 
   def _build_default_output_name(self, ordered_paths: list[str], mode_id: str) -> str:
     if not ordered_paths:

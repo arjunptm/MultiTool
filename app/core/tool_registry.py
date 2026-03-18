@@ -35,7 +35,7 @@ def get_registered_tools() -> list[ToolDefinition]:
     ToolDefinition(
       tool_id="pdf_combine",
       name="Combine PDFs",
-      description="Placeholder page for a future PDF merging utility.",
+      description="Combine multiple PDF files, reorder pages, preview them, and optionally flatten before merging.",
       category="Documents",
       page_class=PdfCombinePage,
     ),

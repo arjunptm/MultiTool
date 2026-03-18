@@ -18,8 +18,8 @@ The app is designed as a **scalable framework** where:
 * Beginner-friendly but structured for growth
 * Avoid unnecessary complexity or over-engineering
 * Prefer readability over cleverness
-* All dependencies should be installable via pip (no OS-level setup)
-* UI should be simple, clean, and practical (not fancy)
+* All dependencies should be installable via pip
+* UI should be simple, clean, and practical
 
 ## Tech Stack
 
@@ -31,10 +31,27 @@ The app is designed as a **scalable framework** where:
 * `app.py` → entry point
 * `app/main_window.py` → handles navigation via QStackedWidget
 * `app/core/tool_registry.py` → central registry of tools
-* `app/ui/` → shared UI (home page, widgets, styles, base tool page)
-* `app/tools/<tool_name>/page.py` → each tool has its own page class
-* Each tool inherits from `ToolPageBase`
-* Navigation is controlled centrally (Home ↔ Tool pages)
+
+### Shared UI Layer (`app/ui/`)
+
+* `tool_page_base.py` → base layout for all tools
+* `home_page.py` → main launcher/home screen
+* `widgets.py` → shared UI components (e.g., ToolCard)
+* `file_widgets.py` → reusable file-related UI components
+
+Includes:
+
+- `ReorderableFileListWidget` → drag-and-drop file list
+- `FileSelectionPanel` → reusable file selection panel
+
+### Tools (`app/tools/`)
+
+* `app/tools/<tool_name>/page.py` → tool UI + behavior
+* `app/tools/<tool_name>/service.py` → tool-specific logic (optional)
+
+Each tool inherits from `ToolPageBase`.
+
+Navigation is controlled centrally (Home ↔ Tool pages).
 
 ## How Tools Work
 
@@ -45,45 +62,54 @@ Each tool:
 * Uses `ToolPageBase` for consistent layout
 * Is automatically shown on the home screen
 
+## UI Reuse Rules (VERY IMPORTANT)
+
+Before creating new UI components:
+
+1. Check `app/ui/` for existing reusable widgets
+
+2. If similar UI already exists:
+   - Reuse it
+   - Do NOT duplicate it inside a tool
+
+3. If a pattern appears in multiple tools:
+   - Refactor it into `app/ui/`
+
+4. Tool folders should NOT contain reusable UI unless it is truly tool-specific
+
+Examples:
+
+- File list with drag-and-drop → use `ReorderableFileListWidget`
+- File selection panel → use `FileSelectionPanel`
+
+Avoid:
+
+- Copy-pasting UI code between tools
+- Creating slightly different versions of the same widget
+
 ## What I Expect From You
 
 When I ask for help:
 
-1. **Understand the existing architecture first**
+1. Understand the existing architecture first
+2. Do NOT rewrite the whole app unless explicitly asked
+3. Follow existing patterns and structure
+4. Keep code clean and modular
+5. Be practical and avoid overengineering
 
-   * Do NOT rewrite the whole app unless explicitly asked
-   * Extend the current structure
+## When Adding a New Feature or Tool
 
-2. **Follow existing patterns**
+* Show exactly which files to create or modify
+* Provide full code (not partial snippets unless small change)
+* Explain where each piece fits
 
-   * Match file structure, naming, and code style
-   * Keep consistency with how current tools are implemented
+* Reuse existing UI components from `app/ui/`
+* If new UI is reusable, place it in `app/ui/`, not inside a tool
 
-3. **Keep code clean and modular**
+## When Modifying Existing Code
 
-   * Separate UI from logic when appropriate
-   * Suggest creating helper/service files inside tool folders if needed
-
-4. **Be practical and opinionated**
-
-   * Recommend good patterns, but avoid overengineering
-   * This is a personal tool, not a large enterprise system
-
-5. **When adding a new feature/tool**
-
-   * Show exactly which files to create or modify
-   * Provide full code (not partial snippets unless small change)
-   * Explain where each piece fits
-
-6. **When modifying existing code**
-
-   * Clearly indicate what changed
-   * Prefer minimal, safe edits
-
-7. **Assume I will paste your code directly**
-
-   * Keep it runnable
-   * Avoid missing imports or dependencies
+* Clearly indicate what changed
+* Prefer minimal, safe edits
 
 ## My Preferences
 
@@ -92,15 +118,28 @@ When I ask for help:
 * Avoid unnecessary abstractions
 * Prefer clarity over compactness
 
+## Abstraction Philosophy
+
+* Do NOT abstract too early
+* Only extract shared components when:
+  - They are already used in one tool AND likely reusable
+  - They improve clarity
+
+* Keep:
+  - Tool logic inside tool folders
+  - Shared UI inside `app/ui/`
+
+Avoid turning this into an overengineered framework.
+
 ## Typical Next Tasks
 
 Examples of what I may ask:
 
-* Implement a real tool (e.g., PDF combiner, image resizer)
-* Add file dialogs, drag-and-drop, or previews
+* Implement a real tool (e.g., image resizer, bulk renamer)
+* Add file dialogs, drag-and-drop, previews
 * Improve UI layout or usability
-* Add progress indicators or threading for long tasks
-* Package into a Windows executable (.exe)
+* Add progress indicators or threading
+* Package into a Windows executable
 
 ## Important Constraint
 
@@ -109,22 +148,18 @@ This is **framework-first development**:
 * Do NOT break the scalable structure
 * Any new feature should fit cleanly into the architecture
 
----
-
-I have attached a ZIP of the current project.
-Start by:
-
-1. Reviewing the project structure
-2. Summarizing your understanding briefly
-3. Then proceed with the requested task
-
 ## Note on Project Archive
 
-The attached ZIP file may NOT include the `.venv` folder or other generated files (such as `__pycache__`).
+The ZIP file may NOT include:
 
-Please assume:
+- `.venv/`
+- `__pycache__/`
+
+This is intentional.
+
+Assume:
+
 - Dependencies are defined in `requirements.txt`
-- The environment should be recreated using standard pip installation
-- Missing `.venv` is intentional and not an error
+- Environment should be recreated using pip
 
-Do not treat missing virtual environment files as an issue.
+Do NOT treat missing virtual environment files as an issue.
