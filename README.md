@@ -128,18 +128,39 @@ cd MultiTool
 
 python -m venv .venv
 
-Activate (Windows):
-.venv\Scripts\activate
+---
+
+### 3. Activate the virtual environment (IMPORTANT)
+
+This must be done every time you open a new terminal before running the app.
+
+Since this project is developed on Windows:
+
+If you are using Bash (Git Bash / WSL / similar):
+
+source .venv/Scripts/activate
+
+If you are using Command Prompt:
+
+.venv\Scripts\activate.bat
+
+If you are using PowerShell:
+
+.venv\Scripts\Activate.ps1
+
+After activation, your terminal should show something like:
+
+(.venv) ...
 
 ---
 
-### 3. Install dependencies
+### 4. Install dependencies
 
 pip install -r requirements.txt
 
 ---
 
-### 4. Run the app
+### 5. Run the app
 
 python app.py
 
