@@ -64,6 +64,30 @@ QPushButton#secondaryButton:hover {
   background: #d1d5db;
 }
 
+QToolButton {
+  background: #2563eb;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+QToolButton:hover {
+  background: #1d4ed8;
+}
+
+QToolButton:pressed {
+  background: #1e40af;
+}
+
+QToolButton::menu-indicator {
+  subcontrol-origin: padding;
+  subcontrol-position: right center;
+  padding-right: 8px;
+}
+
 QScrollArea {
   border: none;
   background: transparent;
