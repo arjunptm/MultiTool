@@ -117,3 +117,14 @@ Start by:
 1. Reviewing the project structure
 2. Summarizing your understanding briefly
 3. Then proceed with the requested task
+
+## Note on Project Archive
+
+The attached ZIP file may NOT include the `.venv` folder or other generated files (such as `__pycache__`).
+
+Please assume:
+- Dependencies are defined in `requirements.txt`
+- The environment should be recreated using standard pip installation
+- Missing `.venv` is intentional and not an error
+
+Do not treat missing virtual environment files as an issue.

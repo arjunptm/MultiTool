@@ -170,21 +170,36 @@ This project uses an **AI-assisted development workflow**. Contributions can fol
 * Make changes following existing patterns
 * Submit a pull request
 
+---
+
 ### Option 2 - ChatGPT-Assisted Workflow (Recommended)
 
 This repository includes a `prompt.txt` file that contains the project context and design guidelines.
 
 #### Steps
 
-1. Zip the project directory:
+1. Create a clean project archive (excluding `.venv` and generated files)
 
+   Recommended (if using Git):
+
+   ```bash
+   git archive -o multitool-$(date +%Y%m%d).zip HEAD
    ```
-   MultiTool/
-   ```
+
+   This automatically excludes:
+
+   * `.venv/`
+   * `__pycache__/`
+   * other untracked/generated files
+
+   Alternatively (manual):
+
+   * Zip the `MultiTool/` folder
+   * Exclude `.venv/` and cache files
 
 2. Open a new ChatGPT session
 
-3. Upload the zip file
+3. Upload the generated `multitool.zip` file
 
 4. Paste the contents of `prompt.txt`
 
@@ -201,6 +216,16 @@ This repository includes a `prompt.txt` file that contains the project context a
    * propose and generate changes
 
 7. Review the output and apply changes locally
+
+---
+
+### Notes
+
+* The `.venv` folder is intentionally excluded from the archive
+* Dependencies are defined in `requirements.txt`
+* The environment should be recreated locally using pip
+
+---
 
 ### Why this workflow exists
 
