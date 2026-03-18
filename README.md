@@ -182,7 +182,7 @@ You can safely recreate the environment using pip.
 
 Instead of zipping manually (which includes .venv), use:
 
-git archive -o multitool-$(date +%Y%m%d).zip HEAD
+git archive -o exports/multitool-$(date +%Y%m%d).zip HEAD
 
 This creates a clean archive with only tracked files.
 

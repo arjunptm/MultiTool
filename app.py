@@ -8,6 +8,7 @@ from app.ui.styles import APP_STYLESHEET
 
 def main() -> int:
   app = QApplication(sys.argv)
+  app.setOrganizationName("MultiTool")
   app.setApplicationName("MultiTool")
   app.setStyleSheet(APP_STYLESHEET)
 

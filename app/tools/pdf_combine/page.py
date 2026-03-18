@@ -7,7 +7,6 @@ from PySide6.QtGui import QAction, QKeySequence, QShortcut
 from PySide6.QtPdf import QPdfDocument
 from PySide6.QtPdfWidgets import QPdfView
 from PySide6.QtWidgets import (
-  QFileDialog,
   QFrame,
   QHBoxLayout,
   QLabel,
@@ -25,6 +24,7 @@ from app.tools.pdf_combine.service import (
 )
 from app.ui.file_widgets import FileSelectionPanel
 from app.ui.tool_page_base import ToolPageBase
+from app.utils.file_dialogs import get_open_file_names, get_save_file_name
 
 
 @dataclass(frozen=True)
@@ -231,10 +231,9 @@ class PdfCombinePage(ToolPageBase):
     self._on_combine_clicked(mode)
 
   def _on_add_files_clicked(self) -> None:
-    file_paths, _ = QFileDialog.getOpenFileNames(
+    file_paths, _ = get_open_file_names(
       self,
       "Select PDF Files",
-      "",
       "PDF Files (*.pdf);;All Files (*.*)",
     )
 
@@ -375,7 +374,7 @@ class PdfCombinePage(ToolPageBase):
       mode_id=mode.mode_id,
     )
 
-    save_path, _ = QFileDialog.getSaveFileName(
+    save_path, _ = get_save_file_name(
       self,
       "Save Output PDF",
       suggested_name,
