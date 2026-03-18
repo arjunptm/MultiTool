@@ -8,16 +8,17 @@ It is designed as a scalable framework of small tools, where each tool is modula
 
 ## Features
 
-- Simple launcher UI listing all available tools
-- Modular architecture - each tool lives in its own folder
-- Clean navigation between Home and tool pages
-- Reusable UI components for rapid tool development
-- Designed for personal use and iterative expansion
+- Simple launcher UI listing all available tools  
+- Modular architecture - each tool lives in its own folder  
+- Clean navigation between Home and tool pages  
+- Reusable UI components for rapid tool development  
+- Designed for personal use and iterative expansion  
 
 ---
 
 ## Project Structure
 
+```text
 app/
   core/
     tool_registry.py        # Central registry of all tools
@@ -40,33 +41,34 @@ app/
 app.py                      # Entry point
 requirements.txt           # Python dependencies
 prompt.txt                 # ChatGPT development prompt
+```
 
 ---
 
 ## Shared UI Layer
 
-Reusable UI components live in app/ui/.
+Reusable UI components live in `app/ui/`.
 
-Currently available:
+### Currently available
 
-- ToolPageBase
-  - Provides consistent layout for all tools
-  - Includes title, subtitle, and back navigation
+- **ToolPageBase**
+  - Provides consistent layout for all tools  
+  - Includes title, subtitle, and back navigation  
 
-- file_widgets.py
-  - ReorderableFileListWidget
-    - Drag-and-drop file list
-    - Maintains ordered file paths
-  - FileSelectionPanel
+- **file_widgets.py**
+  - **ReorderableFileListWidget**
+    - Drag-and-drop file list  
+    - Maintains ordered file paths  
+  - **FileSelectionPanel**
     - Complete file selection UI:
-      - title + subtitle
-      - file list
-      - Add / Remove buttons
-      - file count label
+      - Title + subtitle  
+      - File list  
+      - Add / Remove buttons  
+      - File count label  
 
-Important:
+### Important
 
-If multiple tools need similar UI, it should be moved into app/ui/ instead of duplicating code inside tool folders.
+If multiple tools need similar UI, it should be moved into `app/ui/` instead of duplicating code inside tool folders.
 
 ---
 
@@ -74,31 +76,35 @@ If multiple tools need similar UI, it should be moved into app/ui/ instead of du
 
 1. Create a new folder:
 
+```bash
 app/tools/<tool_name>/
+```
 
-2. Add a page.py file with a QWidget that inherits from ToolPageBase
+2. Add a `page.py` file with a QWidget that inherits from `ToolPageBase`
 
-3. (Optional) Add a service.py file for logic
+3. (Optional) Add a `service.py` file for logic
 
 4. Register the tool in:
 
+```bash
 app/core/tool_registry.py
+```
 
 ---
 
 ## Reusing Existing UI Components
 
-Before building UI from scratch, check app/ui/.
+Before building UI from scratch, check `app/ui/`.
 
-Use:
+### Use
 
-- FileSelectionPanel for tools that work with files
-- ReorderableFileListWidget when file ordering matters
+- `FileSelectionPanel` for tools that work with files  
+- `ReorderableFileListWidget` when file ordering matters  
 
-Avoid:
+### Avoid
 
-- Copy-pasting UI between tools
-- Creating slightly different versions of the same widget
+- Copy-pasting UI between tools  
+- Creating slightly different versions of the same widget  
 
 ---
 
@@ -106,12 +112,12 @@ Avoid:
 
 Each tool should contain:
 
-- Its own processing logic (e.g., PDF handling, image resizing)
-- File validation rules
-- Tool-specific UI behavior
-- Dialogs and workflows
+- Its own processing logic (e.g., PDF handling, image resizing)  
+- File validation rules  
+- Tool-specific UI behavior  
+- Dialogs and workflows  
 
-Shared UI patterns should NOT live inside tool folders.
+Shared UI patterns should **NOT** live inside tool folders.
 
 ---
 
@@ -119,14 +125,18 @@ Shared UI patterns should NOT live inside tool folders.
 
 ### 1. Clone the repository
 
+```bash
 git clone <your-repo-url>
 cd MultiTool
+```
 
 ---
 
 ### 2. Create a virtual environment (recommended)
 
+```bash
 python -m venv .venv
+```
 
 ---
 
@@ -134,35 +144,45 @@ python -m venv .venv
 
 This must be done every time you open a new terminal before running the app.
 
-Since this project is developed on Windows:
+#### Bash (Git Bash / WSL / similar)
 
-If you are using Bash (Git Bash / WSL / similar):
-
+```bash
 source .venv/Scripts/activate
+```
 
-If you are using Command Prompt:
+#### Command Prompt
 
+```bat
 .venv\Scripts\activate.bat
+```
 
-If you are using PowerShell:
+#### PowerShell
 
+```powershell
 .venv\Scripts\Activate.ps1
+```
 
 After activation, your terminal should show something like:
 
+```text
 (.venv) ...
+```
 
 ---
 
 ### 4. Install dependencies
 
+```bash
 pip install -r requirements.txt
+```
 
 ---
 
 ### 5. Run the app
 
+```bash
 python app.py
+```
 
 ---
 
@@ -170,9 +190,9 @@ python app.py
 
 When sharing this project (e.g., uploading to ChatGPT):
 
-- The .venv/ folder is intentionally excluded
-- __pycache__/ is excluded
-- Dependencies are defined in requirements.txt
+- The `.venv/` folder is intentionally excluded  
+- `__pycache__/` is excluded  
+- Dependencies are defined in `requirements.txt`  
 
 You can safely recreate the environment using pip.
 
@@ -180,9 +200,11 @@ You can safely recreate the environment using pip.
 
 ## Creating a Clean Archive (Recommended)
 
-Instead of zipping manually (which includes .venv), use:
+Instead of zipping manually (which includes `.venv`), use:
 
+```bash
 git archive -o exports/multitool-$(date +%Y%m%d).zip HEAD
+```
 
 This creates a clean archive with only tracked files.
 
@@ -202,10 +224,10 @@ This project is designed to work well with ChatGPT-assisted development.
 
 To continue development in a new thread:
 
-1. Zip the project (preferably using git archive)
-2. Upload the ZIP
-3. Paste the contents of prompt.txt
-4. Describe what you want to build next
+1. Zip the project (preferably using `git archive`)  
+2. Upload the ZIP  
+3. Paste the contents of `prompt.txt`  
+4. Describe what you want to build next  
 
 ChatGPT will use the prompt + codebase to continue development consistently.
 
@@ -215,10 +237,10 @@ ChatGPT will use the prompt + codebase to continue development consistently.
 
 This project follows a framework-first approach:
 
-- Keep tools modular and self-contained
-- Share UI patterns through app/ui/
-- Avoid duplicating UI logic across tools
-- Prefer simple, readable abstractions
+- Keep tools modular and self-contained  
+- Share UI patterns through `app/ui/`  
+- Avoid duplicating UI logic across tools  
+- Prefer simple, readable abstractions  
 
 If something is reused across tools, it should be promoted to the shared UI layer.
 
@@ -228,16 +250,16 @@ If something is reused across tools, it should be promoted to the shared UI laye
 
 This project is:
 
-- Designed and maintained as a personal utility suite
-- Built entirely with the help of ChatGPT as a development assistant
+- Designed and maintained as a personal utility suite  
+- Built entirely with the help of ChatGPT as a development assistant  
 
 ---
 
 ## Future Ideas
 
-- Image Resizer
-- Bulk File Renamer
-- File Format Converter
-- Media Tools
-- Progress indicators + threading
-- Packaging as a Windows executable (.exe)
+- Image Resizer  
+- Bulk File Renamer  
+- File Format Converter  
+- Media Tools  
+- Progress indicators + threading  
+- Packaging as a Windows executable (.exe)  
