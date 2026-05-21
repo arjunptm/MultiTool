@@ -258,6 +258,7 @@ This project is:
 ## Future Ideas
 
 - Image Resizer  
+- Add image support to the combine PDFs tool
 - Bulk File Renamer  
 - File Format Converter  
 - Media Tools  
