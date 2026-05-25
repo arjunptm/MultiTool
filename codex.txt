@@ -110,6 +110,25 @@ source .venv/Scripts/activate
 python app.py
 ```
 
+## Windows Packaging
+
+- Packaging work is tracked on branch `AI-windows-executable-packaging`.
+- Issue #5 covers local/manual Windows executable packaging.
+- Issue #14 covers later tagged GitHub Actions release automation.
+- The first local packaging pass uses PyInstaller with a folder-based build.
+- `MultiTool.spec` is the committed PyInstaller build recipe.
+- `requirements-build.txt` installs normal app dependencies plus PyInstaller.
+- `build/` and `dist/` are generated outputs and should not be committed.
+
+Useful local packaging commands:
+
+```bash
+source .venv/Scripts/activate
+pip install -r requirements-build.txt
+pyinstaller --noconfirm --clean MultiTool.spec
+./dist/MultiTool/MultiTool.exe
+```
+
 ## Collaboration Notes
 
 - If planning a larger feature, first check related issues, then create or
@@ -119,3 +138,22 @@ python app.py
 - Avoid overengineering. Follow existing project patterns and only extract shared
   UI into `app/ui/` after reuse is real.
 - Be careful with unrelated user changes. Do not revert or overwrite them.
+
+## End-of-Session Wrap-Up
+
+When the user says something like "let's run a wrap-up check", treat it as a
+request to prepare the repo and project tracking for a stopping point.
+
+Wrap-up checklist:
+
+- Check `git status` and summarize uncommitted, staged, and untracked changes.
+- Review whether README, `prompt.txt`, and `codex.txt` need updates for the work
+  completed in the session.
+- Run appropriate lightweight verification commands for the touched area when
+  practical.
+- Check related GitHub issues and pull requests for status, missing links, or
+  follow-up notes.
+- Prompt the user before committing, pushing, creating a PR, merging, closing
+  issues, or making any other state-changing GitHub/Git action.
+- Leave the user with a clear summary of what is done, what remains, and the
+  recommended next action.

@@ -44,6 +44,8 @@ app/
 
 app.py                      # Entry point
 requirements.txt           # Python dependencies
+requirements-build.txt     # Extra dependencies for building a Windows executable
+MultiTool.spec              # PyInstaller build recipe for Windows packaging
 prompt.txt                 # ChatGPT development prompt
 ```
 
@@ -187,6 +189,46 @@ pip install -r requirements.txt
 ```bash
 python app.py
 ```
+
+---
+
+## Building a Windows Executable
+
+MultiTool can be packaged as a Windows folder-based executable using
+PyInstaller.
+
+### 1. Install build dependencies
+
+Activate the virtual environment first, then run:
+
+```bash
+pip install -r requirements-build.txt
+```
+
+### 2. Build the executable
+
+```bash
+pyinstaller --noconfirm --clean MultiTool.spec
+```
+
+The packaged app is created in:
+
+```text
+dist/MultiTool/
+```
+
+Run:
+
+```text
+dist/MultiTool/MultiTool.exe
+```
+
+### Notes
+
+- `MultiTool.spec` is the committed PyInstaller build recipe.
+- `build/` and `dist/` are generated output folders and should not be committed.
+- The first packaging target is a folder-based portable app, not an installer.
+- For release sharing, zip the full `dist/MultiTool/` folder.
 
 ---
 

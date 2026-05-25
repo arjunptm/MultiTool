@@ -3,7 +3,7 @@ from pathlib import Path
 from PySide6.QtCore import QSettings
 from PySide6.QtWidgets import QFileDialog, QWidget
 
-from app.utils.paths import project_root
+from app.utils.paths import default_user_directory
 
 
 _LAST_DIRECTORY_KEY = "file_dialogs/last_directory"
@@ -19,7 +19,7 @@ def get_last_directory() -> str:
   if saved_directory and Path(saved_directory).exists():
     return saved_directory
 
-  return str(project_root())
+  return str(default_user_directory())
 
 
 def _store_directory_from_path(path_str: str) -> None:
