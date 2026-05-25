@@ -19,6 +19,8 @@ The app is designed as a **scalable framework** where:
 * Avoid unnecessary complexity or over-engineering
 * Prefer readability over cleverness
 * All dependencies should be installable via pip
+* Normal app dependencies belong in `requirements.txt`
+* Packaging/build dependencies belong in `requirements-build.txt`
 * UI should be simple, clean, and practical
 
 ## Tech Stack
@@ -162,6 +164,22 @@ This is **framework-first development**:
 
 * Do NOT break the scalable structure
 * Any new feature should fit cleanly into the architecture
+
+## Windows Packaging Notes
+
+The project uses PyInstaller for Windows executable packaging.
+
+* `MultiTool.spec` is the reusable PyInstaller build recipe
+* `requirements-build.txt` installs app dependencies plus PyInstaller
+* Use a folder-based build first, not a one-file executable
+* Build output folders such as `build/` and `dist/` should not be committed
+
+Typical local build command:
+
+```bash
+pip install -r requirements-build.txt
+pyinstaller --noconfirm --clean MultiTool.spec
+```
 
 ## Note on Project Archive
 
