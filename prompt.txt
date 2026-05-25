@@ -53,6 +53,11 @@ Each tool inherits from `ToolPageBase`.
 
 Navigation is controlled centrally (Home ↔ Tool pages).
 
+Current document tools include:
+
+* `pdf_combine` -> combines and optionally flattens multiple PDFs
+* `sign_pdf` -> adds one visual signature to a selected PDF page
+
 ## How Tools Work
 
 Each tool:

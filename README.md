@@ -34,6 +34,10 @@ app/
       page.py               # Tool UI + behavior
       service.py            # Tool-specific logic
 
+    sign_pdf/
+      page.py               # Visual signature UI + behavior
+      service.py            # PDF rendering and signature insertion logic
+
     <future_tools>/
       page.py
       service.py (optional)
@@ -258,6 +262,7 @@ This project is:
 ## Future Ideas
 
 - Image Resizer  
+- Improve Sign PDF with multiple signatures, initials, dates, and reusable saved signatures
 - Add image support to the combine PDFs tool
 - Bulk File Renamer  
 - File Format Converter  
