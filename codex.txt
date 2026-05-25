@@ -1,0 +1,121 @@
+# Codex Working Context for MultiTool
+
+Use this file as quick context when starting a new Codex chat for this repo.
+It complements `prompt.txt`: `prompt.txt` describes the app architecture and coding
+style, while this file describes collaboration, Git/GitHub workflow, and project
+history from prior AI-assisted work.
+
+## User Preferences
+
+- The user usually uses Git Bash, not PowerShell. When giving terminal commands,
+  prefer Git Bash syntax unless the user specifically asks for PowerShell.
+- The project runs from `W:\MultiTool`.
+- Python virtual environment activation in Git Bash:
+
+```bash
+source .venv/Scripts/activate
+python app.py
+```
+
+- Keep explanations practical and beginner-friendly. The user is learning good
+  Git/GitHub/Codex workflow while building the app.
+
+## Git Workflow
+
+- Do not work directly on `main` for feature development.
+- Use feature branches prefixed with `AI-`, for example:
+
+```bash
+git checkout -b AI-sign-pdf-tool
+```
+
+- Keep `main` stable and runnable.
+- Before committing, check:
+
+```bash
+git status
+git diff
+```
+
+- Preferred commit style: one clear, meaningful commit per coherent feature/fix
+  unless the task naturally needs multiple commits.
+
+## GitHub Workflow
+
+- GitHub CLI (`gh`) is installed and authenticated as the user's personal GitHub
+  account: `arjunptm`.
+- The repo remote is:
+
+```text
+git@github.com:arjunptm/MultiTool.git
+```
+
+- Use GitHub issues for meaningful feature work, bugs, polish tasks, refactors,
+  or future ideas.
+- When the user brings a new idea, feature, bug, or polish request, first check
+  existing GitHub issues for exact or similar matches before planning or coding:
+
+```bash
+gh issue list --state open --limit 100
+gh issue list --state all --search "<keywords>"
+```
+
+- If a matching issue exists, discuss how the new request fits it and whether
+  the existing issue should be used, refined, split, or superseded.
+- If no suitable issue exists, create a focused issue before or alongside the
+  implementation plan.
+- Use pull requests before merging feature branches into `main`, even for solo
+  work, because PRs provide a useful review checkpoint.
+- Include `Closes #<issue-number>` in PR bodies when the PR should close an
+  issue on merge.
+- It is acceptable for Codex to use `gh` to create issues, create PRs, inspect
+  PR state, and merge PRs when the user explicitly asks.
+
+## First AI-Assisted Feature Already Completed
+
+- Feature branch: `AI-sign-pdf-tool`
+- Issue: `#1 Add visual PDF signing tool`
+- Pull request: `#2 Add visual PDF signing tool`
+- PR #2 was merged into `main`.
+- Issue #1 closed automatically through `Closes #1`.
+
+The completed feature added a standalone `Sign PDF` tool under Documents.
+It supports:
+
+- opening one PDF
+- navigating pages
+- uploading a signature image
+- drawing a signature with the mouse
+- moving the signature visually
+- resizing via edge handles
+- proportional scaling via the bottom-right handle
+- rotating via a top handle
+- saving a signed copy without overwriting the original
+
+It is visual signing only, not cryptographic/digital certification.
+
+## Testing Habits Used So Far
+
+Useful checks:
+
+```bash
+.venv/Scripts/python.exe -m compileall app
+```
+
+For GUI code, Codex has also used offscreen Qt smoke checks where appropriate.
+The user should manually run and interact with the app for real GUI validation:
+
+```bash
+source .venv/Scripts/activate
+python app.py
+```
+
+## Collaboration Notes
+
+- If planning a larger feature, first check related issues, then create or
+  discuss a concrete plan.
+- Once implementation starts, Codex should inspect the repo, make focused edits,
+  run checks, and summarize results.
+- Avoid overengineering. Follow existing project patterns and only extract shared
+  UI into `app/ui/` after reuse is real.
+- Be careful with unrelated user changes. Do not revert or overwrite them.

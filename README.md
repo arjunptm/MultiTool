@@ -220,6 +220,11 @@ This is a personal project, and design decisions are made by the project owner.
 
 That said, contributions and improvements are welcome.
 
+Before starting meaningful feature, bug, polish, or refactor work, check existing
+GitHub issues for exact or similar items. If none exists, create a focused issue
+with the goal and acceptance criteria, then use a branch and pull request to
+merge the work back into `main`.
+
 ---
 
 ## Developing with ChatGPT

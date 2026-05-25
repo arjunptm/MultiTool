@@ -97,10 +97,20 @@ Avoid:
 When I ask for help:
 
 1. Understand the existing architecture first
-2. Do NOT rewrite the whole app unless explicitly asked
-3. Follow existing patterns and structure
-4. Keep code clean and modular
-5. Be practical and avoid overengineering
+2. Check existing GitHub issues for exact or similar work before planning or coding
+3. Do NOT rewrite the whole app unless explicitly asked
+4. Follow existing patterns and structure
+5. Keep code clean and modular
+6. Be practical and avoid overengineering
+
+## Issue-First Workflow
+
+When I bring a new idea, bug, feature, or polish request:
+
+* Use `gh issue list` / `gh issue list --search` to look for existing exact or similar issues
+* If a relevant issue exists, explain how the request fits it before starting work
+* If no relevant issue exists, help create a focused issue when the work is meaningful
+* Use pull requests to merge feature branches back into `main`
 
 ## When Adding a New Feature or Tool
 
