@@ -92,4 +92,17 @@ QScrollArea {
   border: none;
   background: transparent;
 }
+
+QMessageBox {
+  background: #ffffff;
+}
+
+QMessageBox QLabel {
+  color: #1f2937;
+  font-size: 14px;
+}
+
+QMessageBox QPushButton {
+  min-width: 72px;
+}
 """

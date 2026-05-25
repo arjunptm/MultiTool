@@ -2,6 +2,7 @@ from dataclasses import dataclass
 from typing import Type
 
 from app.tools.pdf_combine.page import PdfCombinePage
+from app.tools.sign_pdf.page import SignPdfPage
 from app.tools.image_resize.page import ImageResizePage
 from app.tools.bulk_rename.page import BulkRenamePage
 
@@ -38,6 +39,13 @@ def get_registered_tools() -> list[ToolDefinition]:
       description="Combine multiple PDF files, reorder pages, preview them, and optionally flatten before merging.",
       category="Documents",
       page_class=PdfCombinePage,
+    ),
+    ToolDefinition(
+      tool_id="sign_pdf",
+      name="Sign PDF",
+      description="Add a visual signature to a PDF by uploading an image or drawing one with the mouse.",
+      category="Documents",
+      page_class=SignPdfPage,
     ),
     ToolDefinition(
       tool_id="image_resize",
