@@ -70,6 +70,12 @@ gh issue list --state all --search "<keywords>"
   issue on merge.
 - It is acceptable for Codex to use `gh` to create issues, create PRs, inspect
   PR state, and merge PRs when the user explicitly asks.
+- When creating or editing GitHub issue/PR bodies that contain markdown
+  backticks, tag patterns like `v*`, or other shell-sensitive characters, use a
+  safe multiline body approach such as a PowerShell single-quoted here-string
+  assigned to `$body`, then pass `--body $body`. Avoid embedding escaped
+  backticks directly in a one-line `gh ... --body "..."` command, because that
+  can mangle characters in Git Bash/PowerShell contexts.
 
 ## First AI-Assisted Feature Already Completed
 
