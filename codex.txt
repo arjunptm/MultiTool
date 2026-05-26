@@ -118,9 +118,11 @@ python app.py
 
 ## Windows Packaging
 
-- Packaging work is tracked on branch `AI-windows-executable-packaging`.
-- Issue #5 covers local/manual Windows executable packaging.
-- Issue #14 covers later tagged GitHub Actions release automation.
+- Issue #5 covered local/manual Windows executable packaging and is closed.
+- Issue #14 covered tagged GitHub Actions release automation and is closed.
+- The first automated release tag, `v0.1.0`, published
+  `MultiTool-v0.1.0-windows.zip`.
+- Issue #17 tracks future evaluation of macOS/Linux support.
 - The first local packaging pass uses PyInstaller with a folder-based build.
 - `MultiTool.spec` is the committed PyInstaller build recipe.
 - `requirements-build.txt` installs normal app dependencies plus PyInstaller.
@@ -133,6 +135,15 @@ source .venv/Scripts/activate
 pip install -r requirements-build.txt
 pyinstaller --noconfirm --clean MultiTool.spec
 ./dist/MultiTool/MultiTool.exe
+```
+
+Useful tagged release commands:
+
+```bash
+git checkout main
+git pull
+git tag v0.1.0
+git push origin v0.1.0
 ```
 
 ## Collaboration Notes

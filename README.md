@@ -230,6 +230,39 @@ dist/MultiTool/MultiTool.exe
 - The first packaging target is a folder-based portable app, not an installer.
 - For release sharing, zip the full `dist/MultiTool/` folder.
 
+## Publishing a Tagged Windows Release
+
+Windows releases are published through GitHub Actions when a version tag is
+pushed.
+
+### 1. Confirm `main` is ready
+
+```bash
+git checkout main
+git pull
+git status --short --branch
+```
+
+### 2. Create and push a version tag
+
+Use tags that start with `v`, such as:
+
+```bash
+git tag v0.1.0
+git push origin v0.1.0
+```
+
+### 3. Verify the release
+
+The workflow builds the Windows executable, zips `dist/MultiTool/`, and creates
+a GitHub Release with an asset named like:
+
+```text
+MultiTool-v0.1.0-windows.zip
+```
+
+Normal pushes to `main` do not create releases.
+
 ---
 
 ## Project Archive Notes
