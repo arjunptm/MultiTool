@@ -42,7 +42,6 @@ These folders are generated and should not be committed:
 - `.venv/`
 - `build/`
 - `dist/`
-- `exports/`
 - `__pycache__/`
 
 ## Sharing A Local Build
