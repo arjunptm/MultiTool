@@ -156,12 +156,20 @@ pyinstaller --noconfirm --clean MultiTool.spec
 When the user asks for a wrap-up check:
 
 - Check `git status` and summarize uncommitted, staged, and untracked changes.
+- State clearly whether completed changes are local-only, committed, pushed, or
+  awaiting a pull request.
+- If changes were committed, include the latest commit hash and message.
+- If changes should be pushed or opened as a pull request, recommend that as the
+  next action and ask before doing it unless the user already requested it.
 - Review whether README, docs, or `CHANGELOG.md` need updates for the completed
   work.
 - Add an `Unreleased` changelog entry for user-facing changes, repo management
   changes, packaging changes, or notable fixes.
 - Run appropriate lightweight verification commands when practical.
-- Check related GitHub issues and pull requests for status or follow-up notes.
+- For workflow or automation changes, check or recommend checking the relevant
+  GitHub Actions run after the push.
+- Check related GitHub issues, pull requests, and action runs for status or
+  follow-up notes.
 - Prompt before committing, pushing, creating a PR, merging, closing issues, or
   making other state-changing GitHub/Git actions unless already requested.
 - Leave the user with what is done, what remains, and the recommended next
