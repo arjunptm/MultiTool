@@ -175,10 +175,10 @@ When the user asks for a wrap-up check:
 - Add an `Unreleased` changelog entry for user-facing changes, repo management
   changes, packaging changes, or notable fixes.
 - Run appropriate lightweight verification commands when practical.
-- For workflow or automation changes, check or recommend checking the relevant
-  GitHub Actions run after the push.
-- Check related GitHub issues, pull requests, and action runs for status or
-  follow-up notes.
+- For workflow or automation changes, mention that GitHub Actions will run
+  after the push. Check or wait for the run only when the user asks, the task
+  depends on the result, or the change is high risk.
+- Check related GitHub issues and pull requests for status or follow-up notes.
 - Prompt before committing, pushing, creating a PR, merging, closing issues, or
   making other state-changing GitHub/Git actions unless already requested.
 - Leave the user with what is done, what remains, and the recommended next
