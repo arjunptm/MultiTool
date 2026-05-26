@@ -50,6 +50,7 @@ MultiTool.spec          PyInstaller build recipe
 - [Development](docs/development.md)
 - [Packaging](docs/packaging.md)
 - [Releases](docs/releases.md)
+- [AI Collaboration](docs/ai-collaboration.md)
 - [Roadmap](docs/roadmap.md)
 
 ## Build A Windows Executable
