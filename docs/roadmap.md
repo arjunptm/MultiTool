@@ -1,0 +1,28 @@
+# Roadmap
+
+This project grows through focused, practical utility tools. Future work should
+fit the existing modular structure and avoid broad rewrites unless the current
+architecture becomes a real limitation.
+
+## Tool Ideas
+
+- Image resizer
+- Bulk file renamer
+- File format converter
+- Media tools
+- Image support for the PDF combine workflow
+
+## Existing Tool Improvements
+
+- Improve Sign PDF with multiple signatures, initials, dates, and reusable
+  saved signatures.
+- Add progress indicators and background processing for longer operations.
+- Improve packaging and release ergonomics.
+- Evaluate whether macOS or Linux support is worth pursuing later.
+
+## Project Management Ideas
+
+- Add a changelog once releases become frequent enough to need one.
+- Add screenshots under `docs/screenshots/` when the app UI is stable enough to
+  document visually.
+- Add tests once service logic grows beyond simple smoke checks.
