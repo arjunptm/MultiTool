@@ -1,5 +1,11 @@
 # MultiTool
 
+[![Release Windows Build](https://github.com/arjunptm/MultiTool/actions/workflows/release-windows.yml/badge.svg)](https://github.com/arjunptm/MultiTool/actions/workflows/release-windows.yml)
+[![Latest Release](https://img.shields.io/github/v/release/arjunptm/MultiTool)](https://github.com/arjunptm/MultiTool/releases)
+![Python 3.11](https://img.shields.io/badge/python-3.11-blue)
+![Platform: Windows](https://img.shields.io/badge/platform-Windows-0078d4)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+
 MultiTool is a Windows-only personal utility suite built with Python and
 PySide6. It provides a single desktop launcher for small, practical tools that
 can be added over time without changing the core navigation structure.
