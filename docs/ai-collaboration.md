@@ -64,6 +64,10 @@ git diff
 Prefer one clear, meaningful commit per coherent feature or fix unless the task
 naturally needs multiple commits.
 
+Keep `CHANGELOG.md` updated for notable changes. Small internal-only edits do
+not need entries unless they affect users, releases, packaging, or project
+management.
+
 Use pull requests before merging feature branches into `main`, even for solo
 work, because PRs provide a useful review checkpoint.
 
@@ -152,7 +156,10 @@ pyinstaller --noconfirm --clean MultiTool.spec
 When the user asks for a wrap-up check:
 
 - Check `git status` and summarize uncommitted, staged, and untracked changes.
-- Review whether README or docs need updates for the completed work.
+- Review whether README, docs, or `CHANGELOG.md` need updates for the completed
+  work.
+- Add an `Unreleased` changelog entry for user-facing changes, repo management
+  changes, packaging changes, or notable fixes.
 - Run appropriate lightweight verification commands when practical.
 - Check related GitHub issues and pull requests for status or follow-up notes.
 - Prompt before committing, pushing, creating a PR, merging, closing issues, or
