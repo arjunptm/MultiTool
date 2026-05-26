@@ -14,12 +14,16 @@ This project uses version tags such as `v0.1.0` for Windows releases. See
   Windows platform support, and license.
 - Added focused project documentation under `docs/`.
 - Added AI collaboration notes under `docs/ai-collaboration.md`.
+- Added lightweight CI checks for pushes and pull requests.
+- Added `AGENTS.md` as a standard entry point for AI coding agents.
 
 ### Changed
 
 - Shortened `README.md` into a concise overview with links to detailed docs.
 - Moved long-form project, packaging, release, and roadmap details into
   dedicated documentation files.
+- Clarified AI collaboration guidance for wrap-ups, direct pushes, pull
+  requests, issue follow-up, and CI result checks.
 
 ### Fixed
 

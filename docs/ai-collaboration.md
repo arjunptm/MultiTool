@@ -171,9 +171,10 @@ When the user asks for a wrap-up check:
 - If changes should be pushed or opened as a pull request, recommend that as the
   next action and ask before doing it unless the user already requested it.
 - Review whether README, docs, or `CHANGELOG.md` need updates for the completed
-  work.
-- Add an `Unreleased` changelog entry for user-facing changes, repo management
-  changes, packaging changes, or notable fixes.
+  work, and make those updates before ending the wrap-up when they are clearly
+  needed.
+- Add an `Unreleased` changelog entry during the wrap-up for user-facing
+  changes, repo management changes, packaging changes, or notable fixes.
 - Run appropriate lightweight verification commands when practical.
 - For workflow or automation changes, mention that GitHub Actions will run
   after the push. Check or wait for the run only when the user asks, the task
@@ -181,5 +182,7 @@ When the user asks for a wrap-up check:
 - Check related GitHub issues and pull requests for status or follow-up notes.
 - Prompt before committing, pushing, creating a PR, merging, closing issues, or
   making other state-changing GitHub/Git actions unless already requested.
+- If the user already requested a wrap-up and the remaining changes are only
+  wrap-up housekeeping, commit and push them after reporting what changed.
 - Leave the user with what is done, what remains, and the recommended next
   action.
