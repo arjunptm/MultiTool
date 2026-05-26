@@ -54,6 +54,15 @@ prefixed with `AI-`, for example:
 git checkout -b AI-sign-pdf-tool
 ```
 
+Before pushing changes, check whether there are related open issues or pull
+requests. If the change is tied to an issue, mention the issue in the commit,
+PR, or follow-up note so the project history stays connected.
+
+When the right git path is unclear, ask the user whether the change is minor
+enough to push directly or whether it should go through a feature branch and
+pull request. Default to a branch and pull request for features, bugs,
+automation, packaging, or changes with meaningful review value.
+
 Before committing, check:
 
 ```bash
