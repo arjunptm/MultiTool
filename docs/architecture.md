@@ -70,8 +70,9 @@ the tool folder unless it becomes genuinely reusable.
 
 `pdf_combine` combines and optionally raster-flattens multiple PDFs.
 
-`sign_pdf` adds one visual signature to one selected page of a PDF. It supports
-uploaded signature images, drawn signatures, drag placement, resizing, scaling,
-rotation, and saving a signed copy.
+`sign_pdf` adds visual signatures and text fields to PDFs. It supports multiple
+signers, uploaded or drawn signature images per signer, date/name-style text
+fields, multiple placements across pages, drag placement, resizing, scaling,
+signature rotation, and saving a signed copy.
 
 `image_resize` and `bulk_rename` are placeholders for future tools.

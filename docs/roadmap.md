@@ -14,8 +14,8 @@ architecture becomes a real limitation.
 
 ## Existing Tool Improvements
 
-- Improve Sign PDF with multiple signatures, initials, dates, and reusable
-  saved signatures.
+- Improve Sign PDF with initials, reusable saved signatures, and optional signer
+  workflow guidance.
 - Add progress indicators and background processing for longer operations.
 - Improve packaging and release ergonomics.
 - Evaluate whether macOS or Linux support is worth pursuing later.

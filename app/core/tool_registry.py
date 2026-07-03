@@ -43,7 +43,7 @@ def get_registered_tools() -> list[ToolDefinition]:
     ToolDefinition(
       tool_id="sign_pdf",
       name="Sign PDF",
-      description="Add a visual signature to a PDF by uploading an image or drawing one with the mouse.",
+      description="Add visual signatures and text fields for one or more signers.",
       category="Documents",
       page_class=SignPdfPage,
     ),

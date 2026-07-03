@@ -7,6 +7,28 @@ This project uses version tags such as `v0.1.0` for Windows releases. See
 
 ## Unreleased
 
+## v0.2.0 - 2026-07-03
+
+### Added
+
+- Added multi-signer support to Sign PDF.
+- Added multiple signature placements across PDF pages.
+- Added text fields for dates and other short PDF annotations.
+- Added duplicate placement support for repeated signatures or text fields.
+- Added undo for the latest stroke in the drawn signature dialog.
+
+### Changed
+
+- Reworked the Sign PDF layout with a scrollable setup panel, right-side
+  placements panel, and shorter-screen-friendly preview sizing.
+- Updated Sign PDF save behavior to write all visual signatures and text fields
+  in one output pass.
+
+### Fixed
+
+- Fixed text fields disappearing from preview or export in some layouts.
+- Fixed selected overlay handles painting over unrelated text fields.
+
 ### Added
 
 - Added an MIT `LICENSE` file.

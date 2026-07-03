@@ -14,8 +14,8 @@ can be added over time without changing the core navigation structure.
 
 - Combine PDFs: merge multiple PDFs, reorder files, preview selections, and
   optionally flatten pages before combining.
-- Sign PDF: add one visual signature to a selected PDF page by uploading an
-  image or drawing a signature.
+- Sign PDF: add multiple visual signatures and text fields, such as dates, from
+  multiple signers by uploading or drawing each person's signature.
 - Resize Images: placeholder for a future batch image resizing utility.
 - Bulk Rename Files: placeholder for a future bulk file renaming utility.
 

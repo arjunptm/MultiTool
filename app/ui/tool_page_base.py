@@ -30,8 +30,8 @@ class ToolPageBase(QWidget):
 
   def _build_shell(self) -> None:
     root = QVBoxLayout(self)
-    root.setContentsMargins(24, 24, 24, 24)
-    root.setSpacing(16)
+    root.setContentsMargins(16, 16, 16, 16)
+    root.setSpacing(10)
 
     top_bar = QHBoxLayout()
     top_bar.addStretch()
@@ -51,11 +51,10 @@ class ToolPageBase(QWidget):
     content_frame = QFrame()
     content_frame.setObjectName("toolCard")
     self.content_layout = QVBoxLayout(content_frame)
-    self.content_layout.setContentsMargins(20, 20, 20, 20)
-    self.content_layout.setSpacing(12)
+    self.content_layout.setContentsMargins(12, 12, 12, 12)
+    self.content_layout.setSpacing(8)
 
     root.addLayout(top_bar)
     root.addWidget(title)
     root.addWidget(subtitle)
-    root.addWidget(content_frame)
-    root.addStretch()
+    root.addWidget(content_frame, 1)

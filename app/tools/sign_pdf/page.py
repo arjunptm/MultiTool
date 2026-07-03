@@ -1,8 +1,10 @@
 import math
+from dataclasses import dataclass
 from pathlib import Path
 
 from PySide6.QtCore import QPoint, QPointF, QRect, QRectF, QSizeF, Qt, Signal
 from PySide6.QtGui import (
+  QFont,
   QColor,
   QImage,
   QMouseEvent,
@@ -14,11 +16,14 @@ from PySide6.QtWidgets import (
   QDialog,
   QDialogButtonBox,
   QFileDialog,
-  QFrame,
   QHBoxLayout,
+  QInputDialog,
   QLabel,
+  QListWidget,
+  QListWidgetItem,
   QMessageBox,
   QPushButton,
+  QScrollArea,
   QSizePolicy,
   QSplitter,
   QVBoxLayout,
@@ -27,7 +32,9 @@ from PySide6.QtWidgets import (
 
 from app.tools.sign_pdf.service import (
   SignaturePlacement,
-  add_signature_to_pdf,
+  SignatureStamp,
+  TextStamp,
+  add_signatures_to_pdf,
   get_pdf_page_count,
   render_pdf_page,
 )
@@ -52,10 +59,22 @@ class SignaturePad(QWidget):
     self._image.fill(Qt.GlobalColor.transparent)
     self._last_point: QPoint | None = None
     self._has_drawing = False
+    self._strokes: list[list[QPoint]] = []
+    self._current_stroke: list[QPoint] = []
 
   def clear(self) -> None:
-    self._image.fill(Qt.GlobalColor.transparent)
-    self._has_drawing = False
+    self._strokes = []
+    self._current_stroke = []
+    self._redraw_image()
+    self.update()
+    self.drawing_changed.emit()
+
+  def undo_last_stroke(self) -> None:
+    if not self._strokes:
+      return
+
+    self._strokes.pop()
+    self._redraw_image()
     self.update()
     self.drawing_changed.emit()
 
@@ -93,6 +112,7 @@ class SignaturePad(QWidget):
     if event.button() != Qt.MouseButton.LeftButton:
       return
     self._last_point = self._image_point(event.position().toPoint())
+    self._current_stroke = [self._last_point]
     self._has_drawing = True
 
   def mouseMoveEvent(self, event: QMouseEvent) -> None:
@@ -100,15 +120,8 @@ class SignaturePad(QWidget):
       return
 
     current_point = self._image_point(event.position().toPoint())
-
-    painter = QPainter(self._image)
-    painter.setRenderHint(QPainter.RenderHint.Antialiasing)
-    pen = QPen(QColor("#111827"), 5, Qt.PenStyle.SolidLine)
-    pen.setCapStyle(Qt.PenCapStyle.RoundCap)
-    pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
-    painter.setPen(pen)
-    painter.drawLine(self._last_point, current_point)
-    painter.end()
+    self._current_stroke.append(current_point)
+    self._draw_line(self._last_point, current_point)
 
     self._last_point = current_point
     self.update()
@@ -116,12 +129,32 @@ class SignaturePad(QWidget):
 
   def mouseReleaseEvent(self, event: QMouseEvent) -> None:
     if event.button() == Qt.MouseButton.LeftButton:
+      if self._current_stroke:
+        self._strokes.append(self._current_stroke)
+        self._current_stroke = []
       self._last_point = None
 
   def _image_point(self, widget_point: QPoint) -> QPoint:
     x = round(widget_point.x() * self._image.width() / max(1, self.width()))
     y = round(widget_point.y() * self._image.height() / max(1, self.height()))
     return QPoint(x, y)
+
+  def _draw_line(self, start: QPoint, end: QPoint) -> None:
+    painter = QPainter(self._image)
+    painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+    pen = QPen(QColor("#111827"), 5, Qt.PenStyle.SolidLine)
+    pen.setCapStyle(Qt.PenCapStyle.RoundCap)
+    pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
+    painter.setPen(pen)
+    painter.drawLine(start, end)
+    painter.end()
+
+  def _redraw_image(self) -> None:
+    self._image.fill(Qt.GlobalColor.transparent)
+    for stroke in self._strokes:
+      for index in range(1, len(stroke)):
+        self._draw_line(stroke[index - 1], stroke[index])
+    self._has_drawing = bool(self._strokes)
 
   def _cropped_image(self) -> QImage:
     bounds = QRect()
@@ -160,8 +193,11 @@ class DrawSignatureDialog(QDialog):
     self.pad = SignaturePad()
 
     button_row = QHBoxLayout()
+    self.undo_button = QPushButton("Undo Stroke")
+    self.undo_button.setObjectName("secondaryButton")
     self.clear_button = QPushButton("Clear")
     self.clear_button.setObjectName("secondaryButton")
+    button_row.addWidget(self.undo_button)
     button_row.addWidget(self.clear_button)
     button_row.addStretch()
 
@@ -176,6 +212,7 @@ class DrawSignatureDialog(QDialog):
     layout.addLayout(button_row)
     layout.addWidget(self.button_box)
 
+    self.undo_button.clicked.connect(self.pad.undo_last_stroke)
     self.clear_button.clicked.connect(self.pad.clear)
     self.pad.drawing_changed.connect(self._update_ok_state)
     self.button_box.accepted.connect(self.accept)
@@ -190,24 +227,61 @@ class DrawSignatureDialog(QDialog):
     )
 
 
+@dataclass
+class Signer:
+  """
+  A person who can provide and place their own visual signature.
+  """
+  signer_id: str
+  name: str
+  signature_png_bytes: bytes = b""
+  signature_pixmap: QPixmap | None = None
+
+
+@dataclass
+class SignatureInstance:
+  """
+  One placed signature belonging to one signer.
+  """
+  instance_id: str
+  signer_id: str
+  page_index: int
+  placement: SignaturePlacement
+
+
+@dataclass
+class TextInstance:
+  """
+  One placed text value, such as a date next to a signature line.
+  """
+  instance_id: str
+  page_index: int
+  text: str
+  placement: SignaturePlacement
+  font_size: float = 12
+
+
 class PdfSignaturePreview(QWidget):
   """
-  Single-page PDF preview with one draggable/resizable signature overlay.
+  Single-page PDF preview with draggable/resizable signature and text overlays.
   """
 
   placement_changed = Signal()
+  selected_instance_changed = Signal(str)
 
   def __init__(self):
     super().__init__()
-    self.setMinimumSize(520, 620)
+    self.setMinimumSize(360, 280)
     self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
     self.setMouseTracking(True)
 
     self._page_pixmap: QPixmap | None = None
     self._page_size = QSizeF(0, 0)
-    self._signature_pixmap: QPixmap | None = None
-    self._signature_rect = QRectF()
-    self._signature_rotation = 0.0
+    self._placements: list[SignatureInstance] = []
+    self._text_fields: list[TextInstance] = []
+    self._signature_pixmaps: dict[str, QPixmap] = {}
+    self._selected_instance_id: str | None = None
+    self._active_instance: SignatureInstance | TextInstance | None = None
 
     self._drag_mode: str | None = None
     self._last_mouse_position = QPoint()
@@ -227,45 +301,65 @@ class PdfSignaturePreview(QWidget):
     self._page_size = QSizeF(0, 0)
     self.update()
 
-  def set_signature(
+  def set_signatures(
     self,
-    pixmap: QPixmap,
-    signature_placement: SignaturePlacement | None = None,
+    placements: list[SignatureInstance],
+    text_fields: list[TextInstance],
+    signature_pixmaps: dict[str, QPixmap],
+    selected_instance_id: str | None,
   ) -> None:
-    self._signature_pixmap = pixmap
-    if signature_placement is None:
-      self._signature_rect = self._default_signature_rect(pixmap)
-      self._signature_rotation = 0.0
-    else:
-      self._signature_rect = QRectF(
-        signature_placement.x,
-        signature_placement.y,
-        signature_placement.width,
-        signature_placement.height,
-      )
-      self._signature_rotation = signature_placement.rotation_degrees
-      self._clamp_signature_rect()
+    self._placements = placements
+    self._text_fields = text_fields
+    self._signature_pixmaps = signature_pixmaps
+    self._selected_instance_id = selected_instance_id
+    self._active_instance = self._selected_instance()
     self.update()
-    self.placement_changed.emit()
 
-  def clear_signature(self) -> None:
-    self._signature_pixmap = None
-    self._signature_rect = QRectF()
-    self._signature_rotation = 0.0
-    self.update()
-    self.placement_changed.emit()
-
-  def has_signature(self) -> bool:
-    return self._signature_pixmap is not None and not self._signature_rect.isNull()
-
-  def signature_placement(self) -> SignaturePlacement:
+  def default_placement_for(self, pixmap: QPixmap) -> SignaturePlacement:
+    rect = self._default_signature_rect(pixmap)
     return SignaturePlacement(
-      x=self._signature_rect.x(),
-      y=self._signature_rect.y(),
-      width=self._signature_rect.width(),
-      height=self._signature_rect.height(),
-      rotation_degrees=self._signature_rotation,
+      x=rect.x(),
+      y=rect.y(),
+      width=rect.width(),
+      height=rect.height(),
+      rotation_degrees=0,
     )
+
+  def default_text_placement(self) -> SignaturePlacement:
+    if self._page_size.isEmpty():
+      return SignaturePlacement(0, 0, 140, 24)
+
+    width = min(160, self._page_size.width() * 0.32)
+    height = 24
+    x = (self._page_size.width() - width) / 2
+    y = self._page_size.height() * 0.66
+    return SignaturePlacement(x=x, y=y, width=width, height=height)
+
+  def default_text_font_size(self) -> float:
+    return self._font_size_for_text_height(self.default_text_placement().height)
+
+  def selected_instance_id(self) -> str | None:
+    return self._selected_instance_id
+
+  def clear_signatures(self) -> None:
+    self._placements = []
+    self._text_fields = []
+    self._signature_pixmaps = {}
+    self._selected_instance_id = None
+    self._active_instance = None
+    self.update()
+
+  def has_signatures(self) -> bool:
+    return bool(self._placements or self._text_fields)
+
+  def _selected_instance(self) -> SignatureInstance | TextInstance | None:
+    for instance in self._placements:
+      if instance.instance_id == self._selected_instance_id:
+        return instance
+    for instance in self._text_fields:
+      if instance.instance_id == self._selected_instance_id:
+        return instance
+    return None
 
   def paintEvent(self, event) -> None:
     del event
@@ -281,67 +375,122 @@ class PdfSignaturePreview(QWidget):
     painter.fillRect(page_rect, QColor("#ffffff"))
     painter.drawPixmap(page_rect, self._page_pixmap)
     painter.setPen(QPen(QColor("#cbd5e1"), 1))
+    painter.setBrush(Qt.BrushStyle.NoBrush)
     painter.drawRect(page_rect.adjusted(0, 0, -1, -1))
 
-    if self._signature_pixmap is not None and not self._signature_rect.isNull():
-      signature_rect = self._pdf_rect_to_widget_rect(self._signature_rect)
+    for instance in self._placements:
+      pixmap = self._signature_pixmaps.get(instance.signer_id)
+      if pixmap is None:
+        continue
+
+      signature_rect = self._pdf_rect_to_widget_rect(self._placement_rect(instance))
       center = QPointF(signature_rect.center())
+      is_selected = instance.instance_id == self._selected_instance_id
 
       painter.save()
       painter.translate(center)
-      painter.rotate(self._signature_rotation)
+      painter.rotate(instance.placement.rotation_degrees)
       local_rect = QRectF(
         -signature_rect.width() / 2,
         -signature_rect.height() / 2,
         signature_rect.width(),
         signature_rect.height(),
       )
-      painter.drawPixmap(local_rect.toRect(), self._signature_pixmap)
+      painter.drawPixmap(local_rect.toRect(), pixmap)
 
-      selection_pen = QPen(QColor("#2563eb"), 2, Qt.PenStyle.DashLine)
-      painter.setPen(selection_pen)
+      border_color = QColor("#2563eb") if is_selected else QColor("#64748b")
+      painter.setPen(QPen(border_color, 2, Qt.PenStyle.DashLine))
+      painter.setBrush(Qt.BrushStyle.NoBrush)
       painter.drawRect(local_rect)
       painter.restore()
 
-      painter.setPen(QPen(QColor("#2563eb"), 1))
-      painter.setBrush(QColor("#2563eb"))
-      for handle_rect in self._handle_rects(signature_rect).values():
-        painter.drawRect(handle_rect)
+      if is_selected:
+        painter.setPen(QPen(QColor("#2563eb"), 1))
+        painter.setBrush(QColor("#2563eb"))
+        for handle_rect in self._handle_rects(signature_rect, instance).values():
+          painter.drawRect(handle_rect)
 
-      rotate_center = self._rotate_handle_center(signature_rect)
-      top_center = self._rotated_point(
-        QPointF(signature_rect.center()),
-        QPointF(signature_rect.center().x(), signature_rect.top()),
+        rotate_center = self._rotate_handle_center(signature_rect, instance)
+        top_center = self._rotated_point(
+          QPointF(signature_rect.center()),
+          QPointF(signature_rect.center().x(), signature_rect.top()),
+          instance,
+        )
+        painter.drawLine(top_center, rotate_center)
+        painter.setBrush(QColor("#ffffff"))
+        painter.drawEllipse(rotate_center, self._handle_size / 2, self._handle_size / 2)
+        painter.setBrush(Qt.BrushStyle.NoBrush)
+
+    for instance in self._text_fields:
+      text_rect = self._pdf_rect_to_widget_rect(self._placement_rect(instance))
+      is_selected = instance.instance_id == self._selected_instance_id
+
+      painter.save()
+      painter.setPen(QColor("#111827"))
+      font = QFont()
+      font.setPixelSize(max(8, round(text_rect.height() * 0.68)))
+      painter.setFont(font)
+      painter.drawText(
+        text_rect.adjusted(4, 0, -4, 0),
+        Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft,
+        instance.text,
       )
-      painter.drawLine(top_center, rotate_center)
-      painter.setBrush(QColor("#ffffff"))
-      painter.drawEllipse(rotate_center, self._handle_size / 2, self._handle_size / 2)
+      border_color = QColor("#0891b2") if is_selected else QColor("#64748b")
+      painter.setPen(QPen(border_color, 2, Qt.PenStyle.DashLine))
+      painter.setBrush(Qt.BrushStyle.NoBrush)
+      painter.drawRect(text_rect)
+      painter.restore()
+
+      if is_selected:
+        painter.setPen(QPen(QColor("#0891b2"), 1))
+        painter.setBrush(QColor("#0891b2"))
+        for handle_rect in self._handle_rects(text_rect, instance).values():
+          painter.drawRect(handle_rect)
+        painter.setBrush(Qt.BrushStyle.NoBrush)
 
   def mousePressEvent(self, event: QMouseEvent) -> None:
-    if event.button() != Qt.MouseButton.LeftButton or not self.has_signature():
+    if event.button() != Qt.MouseButton.LeftButton or not self.has_signatures():
       return
 
-    signature_rect = self._pdf_rect_to_widget_rect(self._signature_rect)
     position = event.position().toPoint()
 
-    handle = self._hit_test_handle(position, signature_rect)
-    if handle is not None:
-      self._drag_mode = handle
-    elif self._point_is_inside_signature(position, signature_rect):
-      self._drag_mode = "move"
+    selected = self._selected_instance()
+    if selected is not None:
+      signature_rect = self._pdf_rect_to_widget_rect(self._placement_rect(selected))
+      handle = self._hit_test_handle(position, signature_rect, selected)
     else:
+      handle = None
+
+    if selected is not None and handle is not None:
+      self._active_instance = selected
+      self._drag_mode = handle
+    else:
+      self._active_instance = None
       self._drag_mode = None
-      return
+      for instance in reversed(self._text_fields + self._placements):
+        signature_rect = self._pdf_rect_to_widget_rect(self._placement_rect(instance))
+        if self._point_is_inside_signature(position, signature_rect, instance):
+          self._selected_instance_id = instance.instance_id
+          self._active_instance = instance
+          self._drag_mode = "move"
+          self.selected_instance_changed.emit(instance.instance_id)
+          break
+
+      if self._active_instance is None or self._drag_mode is None:
+        return
+
+      signature_rect = self._pdf_rect_to_widget_rect(self._placement_rect(self._active_instance))
 
     self._last_mouse_position = position
-    self._drag_start_rect = QRectF(self._signature_rect)
-    self._drag_start_rotation = self._signature_rotation
+    self._drag_start_rect = self._placement_rect(self._active_instance)
+    self._drag_start_rotation = self._active_instance.placement.rotation_degrees
     self._drag_start_angle = self._angle_from_center(position, signature_rect)
+    self.update()
 
   def mouseMoveEvent(self, event: QMouseEvent) -> None:
     position = event.position().toPoint()
 
-    if self._drag_mode is None:
+    if self._drag_mode is None or self._active_instance is None:
       self._update_cursor(position)
       return
 
@@ -355,32 +504,43 @@ class PdfSignaturePreview(QWidget):
     local_delta = self._widget_delta_to_signature_delta(delta, self._drag_start_rotation)
     pdf_delta_x = local_delta.x() / scale
     pdf_delta_y = local_delta.y() / scale
+    rect = self._placement_rect(self._active_instance)
 
     if self._drag_mode == "move":
-      self._signature_rect.translate(delta.x() / scale, delta.y() / scale)
+      rect.translate(delta.x() / scale, delta.y() / scale)
     elif self._drag_mode == "left":
-      self._resize_from_left(pdf_delta_x)
+      rect = self._resize_from_left(rect, pdf_delta_x)
     elif self._drag_mode == "right":
-      self._resize_from_right(pdf_delta_x)
+      rect = self._resize_from_right(rect, pdf_delta_x)
     elif self._drag_mode == "top":
-      self._resize_from_top(pdf_delta_y)
+      rect = self._resize_from_top(rect, pdf_delta_y)
     elif self._drag_mode == "bottom":
-      self._resize_from_bottom(pdf_delta_y)
+      rect = self._resize_from_bottom(rect, pdf_delta_y)
     elif self._drag_mode == "scale":
-      self._scale_from_bottom_right(pdf_delta_x, pdf_delta_y)
+      rect = self._scale_from_bottom_right(rect, pdf_delta_x, pdf_delta_y)
     elif self._drag_mode == "rotate":
-      current_angle = self._angle_from_center(position, self._pdf_rect_to_widget_rect(self._signature_rect))
-      self._signature_rotation = self._normalize_rotation(
+      current_angle = self._angle_from_center(position, self._pdf_rect_to_widget_rect(rect))
+      rotation = self._normalize_rotation(
         self._drag_start_rotation + current_angle - self._drag_start_angle
       )
+      self._set_instance_placement(self._active_instance, rect, rotation)
+      self.update()
+      self.placement_changed.emit()
+      return
 
-    self._clamp_signature_rect()
+    rect = self._clamped_rect(rect)
+    self._set_instance_placement(
+      self._active_instance,
+      rect,
+      self._active_instance.placement.rotation_degrees,
+    )
     self.update()
     self.placement_changed.emit()
 
   def mouseReleaseEvent(self, event: QMouseEvent) -> None:
     if event.button() == Qt.MouseButton.LeftButton:
       self._drag_mode = None
+      self._active_instance = None
 
   def _default_signature_rect(self, pixmap: QPixmap) -> QRectF:
     if self._page_size.isEmpty():
@@ -398,6 +558,33 @@ class PdfSignaturePreview(QWidget):
     x = (self._page_size.width() - width) / 2
     y = self._page_size.height() * 0.72
     return QRectF(x, y, width, height)
+
+  def _placement_rect(self, instance: SignatureInstance | TextInstance) -> QRectF:
+    return QRectF(
+      instance.placement.x,
+      instance.placement.y,
+      instance.placement.width,
+      instance.placement.height,
+    )
+
+  def _set_instance_placement(
+    self,
+    instance: SignatureInstance | TextInstance,
+    rect: QRectF,
+    rotation_degrees: float,
+  ) -> None:
+    instance.placement = SignaturePlacement(
+      x=rect.x(),
+      y=rect.y(),
+      width=rect.width(),
+      height=rect.height(),
+      rotation_degrees=rotation_degrees,
+    )
+    if isinstance(instance, TextInstance):
+      instance.font_size = self._font_size_for_text_height(rect.height())
+
+  def _font_size_for_text_height(self, height: float) -> float:
+    return max(7, min(72, height * 0.68))
 
   def _display_page_rect(self) -> QRect:
     if self._page_pixmap is None:
@@ -435,90 +622,79 @@ class PdfSignaturePreview(QWidget):
       round(pdf_rect.height() * scale),
     )
 
-  def _resize_handle_rect(self, signature_rect: QRect) -> QRect:
-    return self._handle_rects(signature_rect)["scale"]
-
-  def _resize_signature(self, new_width: float, new_height: float) -> None:
-    if self._signature_pixmap is None:
-      return
-
-    min_width = 36
-    min_height = 18
-    aspect_ratio = self._signature_pixmap.height() / max(1, self._signature_pixmap.width())
-
-    width = max(min_width, new_width)
-    height = max(min_height, new_height)
-
-    if abs(new_width) >= abs(new_height):
-      height = width * aspect_ratio
-    else:
-      width = height / max(0.01, aspect_ratio)
-
-    self._signature_rect.setWidth(width)
-    self._signature_rect.setHeight(height)
-
-  def _resize_from_left(self, delta_x: float) -> None:
-    new_x = self._signature_rect.x() + delta_x
-    new_width = self._signature_rect.width() - delta_x
+  def _resize_from_left(self, rect: QRectF, delta_x: float) -> QRectF:
+    new_x = rect.x() + delta_x
+    new_width = rect.width() - delta_x
     if new_width < 36:
-      return
-    self._signature_rect.setX(new_x)
-    self._signature_rect.setWidth(new_width)
+      return rect
+    rect.setX(new_x)
+    rect.setWidth(new_width)
+    return rect
 
-  def _resize_from_right(self, delta_x: float) -> None:
-    new_width = self._signature_rect.width() + delta_x
+  def _resize_from_right(self, rect: QRectF, delta_x: float) -> QRectF:
+    new_width = rect.width() + delta_x
     if new_width < 36:
-      return
-    self._signature_rect.setWidth(new_width)
+      return rect
+    rect.setWidth(new_width)
+    return rect
 
-  def _resize_from_top(self, delta_y: float) -> None:
-    new_y = self._signature_rect.y() + delta_y
-    new_height = self._signature_rect.height() - delta_y
+  def _resize_from_top(self, rect: QRectF, delta_y: float) -> QRectF:
+    new_y = rect.y() + delta_y
+    new_height = rect.height() - delta_y
     if new_height < 18:
-      return
-    self._signature_rect.setY(new_y)
-    self._signature_rect.setHeight(new_height)
+      return rect
+    rect.setY(new_y)
+    rect.setHeight(new_height)
+    return rect
 
-  def _resize_from_bottom(self, delta_y: float) -> None:
-    new_height = self._signature_rect.height() + delta_y
+  def _resize_from_bottom(self, rect: QRectF, delta_y: float) -> QRectF:
+    new_height = rect.height() + delta_y
     if new_height < 18:
-      return
-    self._signature_rect.setHeight(new_height)
+      return rect
+    rect.setHeight(new_height)
+    return rect
 
-  def _scale_from_bottom_right(self, delta_x: float, delta_y: float) -> None:
+  def _scale_from_bottom_right(self, rect: QRectF, delta_x: float, delta_y: float) -> QRectF:
     if self._drag_start_rect.isNull():
-      return
+      return rect
 
     aspect_ratio = self._drag_start_rect.height() / max(1, self._drag_start_rect.width())
     width_change = delta_x
     height_change = delta_y / max(0.01, aspect_ratio)
     change = width_change if abs(width_change) >= abs(height_change) else height_change
 
-    new_width = max(36, self._signature_rect.width() + change)
+    new_width = max(36, rect.width() + change)
     new_height = max(18, new_width * aspect_ratio)
-    self._signature_rect.setWidth(new_width)
-    self._signature_rect.setHeight(new_height)
+    rect.setWidth(new_width)
+    rect.setHeight(new_height)
+    return rect
 
-  def _clamp_signature_rect(self) -> None:
-    if self._page_size.isEmpty() or self._signature_rect.isNull():
-      return
+  def _clamped_rect(self, rect: QRectF) -> QRectF:
+    if self._page_size.isEmpty() or rect.isNull():
+      return rect
 
-    if self._signature_rect.width() > self._page_size.width():
-      self._signature_rect.setWidth(self._page_size.width())
-    if self._signature_rect.height() > self._page_size.height():
-      self._signature_rect.setHeight(self._page_size.height())
+    if rect.width() > self._page_size.width():
+      rect.setWidth(self._page_size.width())
+    if rect.height() > self._page_size.height():
+      rect.setHeight(self._page_size.height())
 
-    x = min(max(0, self._signature_rect.x()), self._page_size.width() - self._signature_rect.width())
-    y = min(max(0, self._signature_rect.y()), self._page_size.height() - self._signature_rect.height())
-    self._signature_rect.moveTo(x, y)
+    x = min(max(0, rect.x()), self._page_size.width() - rect.width())
+    y = min(max(0, rect.y()), self._page_size.height() - rect.height())
+    rect.moveTo(x, y)
+    return rect
 
   def _update_cursor(self, position: QPoint) -> None:
-    if not self.has_signature():
+    if not self.has_signatures():
       self.unsetCursor()
       return
 
-    signature_rect = self._pdf_rect_to_widget_rect(self._signature_rect)
-    handle = self._hit_test_handle(position, signature_rect)
+    selected = self._selected_instance()
+    if selected is None:
+      self.unsetCursor()
+      return
+
+    signature_rect = self._pdf_rect_to_widget_rect(self._placement_rect(selected))
+    handle = self._hit_test_handle(position, signature_rect, selected)
     if handle == "rotate":
       self.setCursor(Qt.CursorShape.CrossCursor)
     elif handle in {"left", "right"}:
@@ -527,12 +703,16 @@ class PdfSignaturePreview(QWidget):
       self.setCursor(Qt.CursorShape.SizeVerCursor)
     elif handle == "scale":
       self.setCursor(Qt.CursorShape.SizeFDiagCursor)
-    elif self._point_is_inside_signature(position, signature_rect):
+    elif self._point_is_inside_signature(position, signature_rect, selected):
       self.setCursor(Qt.CursorShape.SizeAllCursor)
     else:
       self.unsetCursor()
 
-  def _handle_rects(self, signature_rect: QRect) -> dict[str, QRect]:
+  def _handle_rects(
+    self,
+    signature_rect: QRect,
+    instance: SignatureInstance | TextInstance,
+  ) -> dict[str, QRect]:
     center = QPointF(signature_rect.center())
     handle_points = {
       "left": QPointF(signature_rect.left(), signature_rect.center().y()),
@@ -544,7 +724,7 @@ class PdfSignaturePreview(QWidget):
 
     handle_rects = {}
     for name, point in handle_points.items():
-      rotated = self._rotated_point(center, point)
+      rotated = self._rotated_point(center, point, instance)
       handle_rects[name] = QRect(
         round(rotated.x() - self._handle_size / 2),
         round(rotated.y() - self._handle_size / 2),
@@ -553,38 +733,58 @@ class PdfSignaturePreview(QWidget):
       )
     return handle_rects
 
-  def _hit_test_handle(self, position: QPoint, signature_rect: QRect) -> str | None:
-    rotate_center = self._rotate_handle_center(signature_rect)
-    rotate_rect = QRect(
-      round(rotate_center.x() - self._handle_size / 2),
-      round(rotate_center.y() - self._handle_size / 2),
-      self._handle_size,
-      self._handle_size,
-    )
-    if rotate_rect.contains(position):
-      return "rotate"
+  def _hit_test_handle(
+    self,
+    position: QPoint,
+    signature_rect: QRect,
+    instance: SignatureInstance | TextInstance,
+  ) -> str | None:
+    if isinstance(instance, SignatureInstance):
+      rotate_center = self._rotate_handle_center(signature_rect, instance)
+      rotate_rect = QRect(
+        round(rotate_center.x() - self._handle_size / 2),
+        round(rotate_center.y() - self._handle_size / 2),
+        self._handle_size,
+        self._handle_size,
+      )
+      if rotate_rect.contains(position):
+        return "rotate"
 
-    for name, handle_rect in self._handle_rects(signature_rect).items():
+    for name, handle_rect in self._handle_rects(signature_rect, instance).items():
       if handle_rect.contains(position):
         return name
 
     return None
 
-  def _point_is_inside_signature(self, position: QPoint, signature_rect: QRect) -> bool:
+  def _point_is_inside_signature(
+    self,
+    position: QPoint,
+    signature_rect: QRect,
+    instance: SignatureInstance | TextInstance,
+  ) -> bool:
     center = QPointF(signature_rect.center())
-    local = self._unrotated_point(center, QPointF(position.x(), position.y()))
+    local = self._unrotated_point(center, QPointF(position.x(), position.y()), instance)
     return QRectF(signature_rect).contains(local)
 
-  def _rotate_handle_center(self, signature_rect: QRect) -> QPointF:
+  def _rotate_handle_center(
+    self,
+    signature_rect: QRect,
+    instance: SignatureInstance | TextInstance,
+  ) -> QPointF:
     center = QPointF(signature_rect.center())
     local_point = QPointF(
       signature_rect.center().x(),
       signature_rect.top() - self._rotate_handle_distance,
     )
-    return self._rotated_point(center, local_point)
+    return self._rotated_point(center, local_point, instance)
 
-  def _rotated_point(self, center: QPointF, point: QPointF) -> QPointF:
-    angle = math.radians(self._signature_rotation)
+  def _rotated_point(
+    self,
+    center: QPointF,
+    point: QPointF,
+    instance: SignatureInstance | TextInstance,
+  ) -> QPointF:
+    angle = math.radians(instance.placement.rotation_degrees)
     dx = point.x() - center.x()
     dy = point.y() - center.y()
     return QPointF(
@@ -592,8 +792,13 @@ class PdfSignaturePreview(QWidget):
       center.y() + dx * math.sin(angle) + dy * math.cos(angle),
     )
 
-  def _unrotated_point(self, center: QPointF, point: QPointF) -> QPointF:
-    angle = math.radians(-self._signature_rotation)
+  def _unrotated_point(
+    self,
+    center: QPointF,
+    point: QPointF,
+    instance: SignatureInstance | TextInstance,
+  ) -> QPointF:
+    angle = math.radians(-instance.placement.rotation_degrees)
     dx = point.x() - center.x()
     dy = point.y() - center.y()
     return QPointF(
@@ -630,17 +835,21 @@ class SignPdfPage(ToolPageBase):
     self.pdf_path: str | None = None
     self.page_count = 0
     self.current_page_index = 0
-    self.signature_page_index: int | None = None
-    self.signature_placement: SignaturePlacement | None = None
-    self.signature_png_bytes = b""
+    self.signers: list[Signer] = []
+    self.signature_instances: list[SignatureInstance] = []
+    self.text_instances: list[TextInstance] = []
+    self.selected_signer_id: str | None = None
+    self.selected_instance_id: str | None = None
+    self._next_signer_number = 1
+    self._next_instance_number = 1
 
     self._build_sign_ui()
     self._update_state()
 
   def _build_sign_ui(self) -> None:
     instructions = QLabel(
-      "Open a PDF, choose a page, add a visual signature, drag or resize it on "
-      "the page, then save a signed copy."
+      "Open a PDF, add signers, upload or draw each signature, place them wherever "
+      "they belong, then save a signed copy."
     )
     instructions.setWordWrap(True)
     self.content_layout.addWidget(instructions)
@@ -649,17 +858,48 @@ class SignPdfPage(ToolPageBase):
     splitter.setChildrenCollapsible(False)
     splitter.addWidget(self._build_controls_panel())
     splitter.addWidget(self._build_preview_panel())
-    splitter.setSizes([320, 680])
+    splitter.setSizes([330, 760])
+    splitter.setStretchFactor(0, 0)
+    splitter.setStretchFactor(1, 1)
 
-    self.content_layout.addWidget(splitter)
+    self.content_layout.addWidget(splitter, 1)
 
   def _build_controls_panel(self) -> QWidget:
-    panel = QFrame()
-    panel.setObjectName("toolCard")
+    scroll_area = QScrollArea()
+    scroll_area.setObjectName("signControlsScroll")
+    scroll_area.setWidgetResizable(True)
+    scroll_area.setMinimumWidth(300)
+    scroll_area.setMaximumWidth(390)
+    scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+
+    panel = QWidget()
+    panel.setObjectName("signControlsPanel")
+    panel.setMinimumWidth(280)
+    panel.setStyleSheet("""
+      QWidget#signControlsPanel {
+        background: #ffffff;
+      }
+      QWidget#signControlsPanel QLabel {
+        color: #111827;
+      }
+      QWidget#signControlsPanel QLabel#pageSubtitle {
+        color: #4b5563;
+      }
+      QWidget#signControlsPanel QListWidget {
+        background: #ffffff;
+        color: #111827;
+        border: 1px solid #d7deea;
+        border-radius: 6px;
+      }
+      QWidget#signControlsPanel QListWidget::item:selected {
+        background: #dbeafe;
+        color: #111827;
+      }
+    """)
 
     layout = QVBoxLayout(panel)
-    layout.setContentsMargins(16, 16, 16, 16)
-    layout.setSpacing(12)
+    layout.setContentsMargins(4, 4, 8, 4)
+    layout.setSpacing(8)
 
     file_title = QLabel("PDF")
     file_title.setObjectName("sectionTitle")
@@ -681,13 +921,22 @@ class SignPdfPage(ToolPageBase):
     self.page_label = QLabel("Page 0 of 0")
     self.page_label.setObjectName("pageSubtitle")
 
-    signature_title = QLabel("Signature")
+    signer_title = QLabel("Signers")
+    signer_title.setObjectName("sectionTitle")
+    self.signer_list = QListWidget()
+    self.signer_list.setMinimumHeight(76)
+    self.signer_list.setMaximumHeight(120)
+    self.add_signer_button = QPushButton("Add Signer")
+    self.rename_signer_button = QPushButton("Rename Signer")
+    self.rename_signer_button.setObjectName("secondaryButton")
+    self.remove_signer_button = QPushButton("Remove Signer")
+    self.remove_signer_button.setObjectName("secondaryButton")
+
+    signature_title = QLabel("Selected Signer Signature")
     signature_title.setObjectName("sectionTitle")
     self.upload_signature_button = QPushButton("Upload Signature Image")
     self.draw_signature_button = QPushButton("Draw Signature")
-    self.move_signature_button = QPushButton("Move to Current Page")
-    self.move_signature_button.setObjectName("secondaryButton")
-    self.clear_signature_button = QPushButton("Clear Signature")
+    self.clear_signature_button = QPushButton("Clear Signer Signature")
     self.clear_signature_button.setObjectName("secondaryButton")
     self.signature_status_label = QLabel("No signature added")
     self.signature_status_label.setObjectName("pageSubtitle")
@@ -703,10 +952,15 @@ class SignPdfPage(ToolPageBase):
     layout.addLayout(page_row)
     layout.addWidget(self.page_label)
     layout.addSpacing(10)
+    layout.addWidget(signer_title)
+    layout.addWidget(self.signer_list)
+    layout.addWidget(self.add_signer_button)
+    layout.addWidget(self.rename_signer_button)
+    layout.addWidget(self.remove_signer_button)
+    layout.addSpacing(10)
     layout.addWidget(signature_title)
     layout.addWidget(self.upload_signature_button)
     layout.addWidget(self.draw_signature_button)
-    layout.addWidget(self.move_signature_button)
     layout.addWidget(self.clear_signature_button)
     layout.addWidget(self.signature_status_label)
     layout.addStretch()
@@ -715,21 +969,25 @@ class SignPdfPage(ToolPageBase):
     self.open_pdf_button.clicked.connect(self._on_open_pdf_clicked)
     self.previous_button.clicked.connect(self._on_previous_page_clicked)
     self.next_button.clicked.connect(self._on_next_page_clicked)
+    self.signer_list.currentItemChanged.connect(self._on_signer_selection_changed)
+    self.add_signer_button.clicked.connect(self._add_signer)
+    self.rename_signer_button.clicked.connect(self._rename_selected_signer)
+    self.remove_signer_button.clicked.connect(self._remove_selected_signer)
     self.upload_signature_button.clicked.connect(self._on_upload_signature_clicked)
     self.draw_signature_button.clicked.connect(self._on_draw_signature_clicked)
-    self.move_signature_button.clicked.connect(self._move_signature_to_current_page)
     self.clear_signature_button.clicked.connect(self._clear_signature)
     self.save_button.clicked.connect(self._on_save_clicked)
 
-    return panel
+    scroll_area.setWidget(panel)
+    return scroll_area
 
   def _build_preview_panel(self) -> QWidget:
-    panel = QFrame()
-    panel.setObjectName("toolCard")
+    panel = QWidget()
+    panel.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
 
     layout = QVBoxLayout(panel)
-    layout.setContentsMargins(16, 16, 16, 16)
-    layout.setSpacing(12)
+    layout.setContentsMargins(4, 4, 4, 4)
+    layout.setSpacing(8)
 
     title = QLabel("Preview")
     title.setObjectName("sectionTitle")
@@ -739,10 +997,73 @@ class SignPdfPage(ToolPageBase):
 
     self.preview = PdfSignaturePreview()
     self.preview.placement_changed.connect(self._on_preview_placement_changed)
+    self.preview.selected_instance_changed.connect(self._on_preview_selection_changed)
 
     layout.addWidget(title)
     layout.addWidget(self.preview_status_label)
-    layout.addWidget(self.preview, 1)
+
+    body = QHBoxLayout()
+    body.setSpacing(10)
+    body.addWidget(self.preview, 1)
+    body.addWidget(self._build_placements_panel())
+    layout.addLayout(body, 1)
+    return panel
+
+  def _build_placements_panel(self) -> QWidget:
+    panel = QWidget()
+    panel.setObjectName("placementsPanel")
+    panel.setMinimumWidth(240)
+    panel.setMaximumWidth(320)
+    panel.setStyleSheet("""
+      QWidget#placementsPanel {
+        background: #ffffff;
+      }
+      QWidget#placementsPanel QLabel {
+        color: #111827;
+      }
+      QWidget#placementsPanel QListWidget {
+        background: #ffffff;
+        color: #111827;
+        border: 1px solid #d7deea;
+        border-radius: 6px;
+      }
+      QWidget#placementsPanel QListWidget::item:selected {
+        background: #dbeafe;
+        color: #111827;
+      }
+    """)
+
+    layout = QVBoxLayout(panel)
+    layout.setContentsMargins(4, 4, 4, 4)
+    layout.setSpacing(8)
+
+    placement_title = QLabel("Placements")
+    placement_title.setObjectName("sectionTitle")
+    self.placement_list = QListWidget()
+    self.placement_list.setMinimumHeight(180)
+    self.add_placement_button = QPushButton("Add Signature")
+    self.add_text_button = QPushButton("Add Text")
+    self.duplicate_placement_button = QPushButton("Duplicate Selected")
+    self.duplicate_placement_button.setObjectName("secondaryButton")
+    self.edit_text_button = QPushButton("Edit Text")
+    self.edit_text_button.setObjectName("secondaryButton")
+    self.remove_placement_button = QPushButton("Remove Selected")
+    self.remove_placement_button.setObjectName("secondaryButton")
+
+    layout.addWidget(placement_title)
+    layout.addWidget(self.placement_list, 1)
+    layout.addWidget(self.add_placement_button)
+    layout.addWidget(self.add_text_button)
+    layout.addWidget(self.duplicate_placement_button)
+    layout.addWidget(self.edit_text_button)
+    layout.addWidget(self.remove_placement_button)
+
+    self.placement_list.currentItemChanged.connect(self._on_placement_selection_changed)
+    self.add_placement_button.clicked.connect(self._add_placement_on_current_page)
+    self.add_text_button.clicked.connect(self._add_text_on_current_page)
+    self.duplicate_placement_button.clicked.connect(self._duplicate_selected_placement)
+    self.edit_text_button.clicked.connect(self._edit_selected_text)
+    self.remove_placement_button.clicked.connect(self._remove_selected_placement)
     return panel
 
   def _on_open_pdf_clicked(self) -> None:
@@ -773,10 +1094,10 @@ class SignPdfPage(ToolPageBase):
     self.pdf_path = pdf_path
     self.page_count = page_count
     self.current_page_index = 0
-    self.signature_page_index = None
-    self.signature_placement = None
-    self.signature_png_bytes = b""
-    self.preview.clear_signature()
+    self.selected_instance_id = None
+    self.signature_instances = []
+    self.text_instances = []
+    self.preview.clear_signatures()
 
     self.pdf_name_label.setText(str(Path(pdf_path)))
     self._load_current_page()
@@ -797,6 +1118,11 @@ class SignPdfPage(ToolPageBase):
     self._update_state()
 
   def _on_upload_signature_clicked(self) -> None:
+    signer = self._selected_signer()
+    if signer is None:
+      QMessageBox.warning(self, "No Signer", "Select or add a signer first.")
+      return
+
     file_path, _ = QFileDialog.getOpenFileName(
       self,
       "Select Signature Image",
@@ -815,9 +1141,14 @@ class SignPdfPage(ToolPageBase):
       )
       return
 
-    self._set_signature(pixmap)
+    self._set_signature_for_signer(signer, pixmap)
 
   def _on_draw_signature_clicked(self) -> None:
+    signer = self._selected_signer()
+    if signer is None:
+      QMessageBox.warning(self, "No Signer", "Select or add a signer first.")
+      return
+
     dialog = DrawSignatureDialog(self)
     if dialog.exec() != QDialog.DialogCode.Accepted:
       return
@@ -834,24 +1165,29 @@ class SignPdfPage(ToolPageBase):
       )
       return
 
-    self.signature_png_bytes = signature_bytes
-    self.signature_page_index = self.current_page_index
-    self.preview.set_signature(pixmap)
-    self._update_state()
-
-  def _move_signature_to_current_page(self) -> None:
-    if not self.signature_png_bytes:
-      return
-    self.signature_page_index = self.current_page_index
-    self.signature_placement = None
-    self._show_or_hide_signature_for_current_page()
+    signer.signature_png_bytes = signature_bytes
+    signer.signature_pixmap = pixmap
+    self._refresh_signer_list()
+    self._refresh_preview_signatures()
     self._update_state()
 
   def _clear_signature(self) -> None:
-    self.signature_page_index = None
-    self.signature_placement = None
-    self.signature_png_bytes = b""
-    self.preview.clear_signature()
+    signer = self._selected_signer()
+    if signer is None:
+      return
+
+    signer.signature_png_bytes = b""
+    signer.signature_pixmap = None
+    self.signature_instances = [
+      instance
+      for instance in self.signature_instances
+      if instance.signer_id != signer.signer_id
+    ]
+    if self.selected_instance_id and self._selected_instance() is None:
+      self.selected_instance_id = None
+    self._refresh_signer_list()
+    self._refresh_placement_list()
+    self._refresh_preview_signatures()
     self._update_state()
 
   def _on_save_clicked(self) -> None:
@@ -859,19 +1195,21 @@ class SignPdfPage(ToolPageBase):
       QMessageBox.warning(self, "No PDF", "Open a PDF before saving.")
       return
 
-    if not self.signature_png_bytes or self.signature_page_index is None:
+    if not self.signature_instances and not self.text_instances:
       QMessageBox.warning(
         self,
-        "No Signature",
-        "Add a signature before saving.",
+        "No Placements",
+        "Add at least one signature or text placement before saving.",
       )
       return
 
-    if self.signature_placement is None:
+    signature_stamps = self._signature_stamps()
+    text_stamps = self._text_stamps()
+    if self.signature_instances and not signature_stamps:
       QMessageBox.warning(
         self,
-        "No Signature Placement",
-        "Place the signature on a page before saving.",
+        "No Complete Signatures",
+        "Every saved placement needs a signer with a signature image.",
       )
       return
 
@@ -889,12 +1227,11 @@ class SignPdfPage(ToolPageBase):
       save_path += ".pdf"
 
     try:
-      add_signature_to_pdf(
+      add_signatures_to_pdf(
         input_pdf_path=self.pdf_path,
         output_pdf_path=save_path,
-        page_index=self.signature_page_index,
-        signature_png_bytes=self.signature_png_bytes,
-        signature_placement=self.signature_placement,
+        signature_stamps=signature_stamps,
+        text_stamps=text_stamps,
       )
     except Exception as exc:
       QMessageBox.critical(
@@ -910,7 +1247,7 @@ class SignPdfPage(ToolPageBase):
       f"Signed copy saved successfully:\n{save_path}",
     )
 
-  def _set_signature(self, pixmap: QPixmap) -> None:
+  def _set_signature_for_signer(self, signer: Signer, pixmap: QPixmap) -> None:
     from PySide6.QtCore import QByteArray, QBuffer, QIODevice
 
     byte_array = QByteArray()
@@ -918,10 +1255,10 @@ class SignPdfPage(ToolPageBase):
     buffer.open(QIODevice.OpenModeFlag.WriteOnly)
     pixmap.toImage().save(buffer, "PNG")
 
-    self.signature_png_bytes = bytes(byte_array)
-    self.signature_page_index = self.current_page_index
-    self.signature_placement = None
-    self.preview.set_signature(pixmap)
+    signer.signature_png_bytes = bytes(byte_array)
+    signer.signature_pixmap = pixmap
+    self._refresh_signer_list()
+    self._refresh_preview_signatures()
     self._update_state()
 
   def _load_current_page(self) -> None:
@@ -947,36 +1284,38 @@ class SignPdfPage(ToolPageBase):
       rendered_page.pdf_width,
       rendered_page.pdf_height,
     )
-    self._show_or_hide_signature_for_current_page()
-
-  def _show_or_hide_signature_for_current_page(self) -> None:
-    if not self.signature_png_bytes or self.signature_page_index != self.current_page_index:
-      if self.signature_page_index != self.current_page_index:
-        self.preview.clear_signature()
-      return
-
-    if not self.preview.has_signature():
-      pixmap = QPixmap()
-      pixmap.loadFromData(self.signature_png_bytes, "PNG")
-      if not pixmap.isNull():
-        self.preview.set_signature(pixmap, self.signature_placement)
+    self._refresh_preview_signatures()
 
   def _update_state(self) -> None:
     has_pdf = self.pdf_path is not None
-    has_signature = bool(self.signature_png_bytes)
+    selected_signer = self._selected_signer()
+    has_signer = selected_signer is not None
+    selected_signer_has_signature = bool(
+      selected_signer and selected_signer.signature_png_bytes
+    )
+    selected_instance = self._selected_instance()
+    has_selected_placement = selected_instance is not None
+    has_selected_text = isinstance(selected_instance, TextInstance)
 
     self.previous_button.setEnabled(has_pdf and self.current_page_index > 0)
     self.next_button.setEnabled(has_pdf and self.current_page_index < self.page_count - 1)
-    self.upload_signature_button.setEnabled(has_pdf)
-    self.draw_signature_button.setEnabled(has_pdf)
-    self.move_signature_button.setEnabled(has_pdf and has_signature)
-    self.clear_signature_button.setEnabled(has_signature)
-    self.save_button.setEnabled(has_pdf and has_signature)
+    self.add_signer_button.setEnabled(has_pdf)
+    self.rename_signer_button.setEnabled(has_pdf and has_signer)
+    self.remove_signer_button.setEnabled(has_pdf and has_signer)
+    self.upload_signature_button.setEnabled(has_pdf and has_signer)
+    self.draw_signature_button.setEnabled(has_pdf and has_signer)
+    self.clear_signature_button.setEnabled(selected_signer_has_signature)
+    self.add_placement_button.setEnabled(has_pdf and selected_signer_has_signature)
+    self.add_text_button.setEnabled(has_pdf)
+    self.duplicate_placement_button.setEnabled(has_selected_placement)
+    self.edit_text_button.setEnabled(has_selected_text)
+    self.remove_placement_button.setEnabled(has_selected_placement)
+    self.save_button.setEnabled(has_pdf and bool(self.signature_instances or self.text_instances))
 
     if has_pdf:
       self.page_label.setText(f"Page {self.current_page_index + 1} of {self.page_count}")
       self.preview_status_label.setText(
-        "Drag the signature to move it. Use edge handles to stretch, the corner to scale, and the top handle to rotate."
+        "Select a placed signature or text field to move it. Use edge handles to resize; signatures also have a top rotation handle."
       )
     else:
       self.page_label.setText("Page 0 of 0")
@@ -985,29 +1324,379 @@ class SignPdfPage(ToolPageBase):
     self._update_signature_status()
 
   def _on_preview_placement_changed(self) -> None:
-    if (
-      self.signature_png_bytes
-      and self.signature_page_index == self.current_page_index
-      and self.preview.has_signature()
-    ):
-      self.signature_placement = self.preview.signature_placement()
-
+    self._refresh_placement_list()
     self._update_signature_status()
 
   def _update_signature_status(self) -> None:
-    if not self.signature_png_bytes or self.signature_page_index is None:
-      self.signature_status_label.setText("No signature added")
+    signer = self._selected_signer()
+    if signer is None:
+      self.signature_status_label.setText("No signer selected")
       return
 
-    page_number = self.signature_page_index + 1
-    if self.signature_page_index == self.current_page_index:
-      rotation = 0
-      if self.signature_placement is not None:
-        rotation = round(self.signature_placement.rotation_degrees)
-      self.signature_status_label.setText(
-        f"Signature placed on page {page_number}. Rotation: {rotation} degrees."
+    count = len([
+      instance
+      for instance in self.signature_instances
+      if instance.signer_id == signer.signer_id
+    ])
+    if not signer.signature_png_bytes:
+      self.signature_status_label.setText(f"{signer.name} has no signature image")
+      return
+
+    self.signature_status_label.setText(
+      f"{signer.name} has {count} placement{'s' if count != 1 else ''}."
+    )
+
+  def _add_signer(self) -> None:
+    if self.pdf_path is None:
+      return
+
+    default_name = f"Signer {self._next_signer_number}"
+    name, accepted = QInputDialog.getText(
+      self,
+      "Add Signer",
+      "Signer name:",
+      text=default_name,
+    )
+    if not accepted:
+      return
+
+    name = name.strip() or default_name
+    signer = Signer(
+      signer_id=f"signer-{self._next_signer_number}",
+      name=name,
+    )
+    self._next_signer_number += 1
+    self.signers.append(signer)
+    self.selected_signer_id = signer.signer_id
+    self._refresh_signer_list()
+    self._update_state()
+
+  def _rename_selected_signer(self) -> None:
+    signer = self._selected_signer()
+    if signer is None:
+      return
+
+    name, accepted = QInputDialog.getText(
+      self,
+      "Rename Signer",
+      "Signer name:",
+      text=signer.name,
+    )
+    if not accepted:
+      return
+
+    signer.name = name.strip() or signer.name
+    self._refresh_signer_list()
+    self._refresh_placement_list()
+    self._update_state()
+
+  def _remove_selected_signer(self) -> None:
+    signer = self._selected_signer()
+    if signer is None:
+      return
+
+    self.signers = [
+      existing
+      for existing in self.signers
+      if existing.signer_id != signer.signer_id
+    ]
+    self.signature_instances = [
+      instance
+      for instance in self.signature_instances
+      if instance.signer_id != signer.signer_id
+    ]
+    self.selected_signer_id = self.signers[0].signer_id if self.signers else None
+    if self.selected_instance_id and self._selected_instance() is None:
+      self.selected_instance_id = None
+    self._refresh_signer_list()
+    self._refresh_placement_list()
+    self._refresh_preview_signatures()
+    self._update_state()
+
+  def _add_placement_on_current_page(self) -> None:
+    signer = self._selected_signer()
+    if signer is None or signer.signature_pixmap is None:
+      return
+
+    placement = self.preview.default_placement_for(signer.signature_pixmap)
+    instance = SignatureInstance(
+      instance_id=f"placement-{self._next_instance_number}",
+      signer_id=signer.signer_id,
+      page_index=self.current_page_index,
+      placement=placement,
+    )
+    self._next_instance_number += 1
+    self.signature_instances.append(instance)
+    self.selected_instance_id = instance.instance_id
+    self._refresh_placement_list()
+    self._refresh_preview_signatures()
+    self._update_state()
+
+  def _add_text_on_current_page(self) -> None:
+    if self.pdf_path is None:
+      return
+
+    text, accepted = QInputDialog.getText(
+      self,
+      "Add Text Field",
+      "Text:",
+    )
+    if not accepted:
+      return
+
+    text = text.strip()
+    if not text:
+      return
+
+    placement = self.preview.default_text_placement()
+    instance = TextInstance(
+      instance_id=f"text-{self._next_instance_number}",
+      page_index=self.current_page_index,
+      text=text,
+      placement=placement,
+      font_size=self.preview.default_text_font_size(),
+    )
+    self._next_instance_number += 1
+    self.text_instances.append(instance)
+    self.selected_instance_id = instance.instance_id
+    self._refresh_placement_list()
+    self._refresh_preview_signatures()
+    self._update_state()
+
+  def _edit_selected_text(self) -> None:
+    instance = self._selected_instance()
+    if not isinstance(instance, TextInstance):
+      return
+
+    text, accepted = QInputDialog.getText(
+      self,
+      "Edit Text Field",
+      "Text:",
+      text=instance.text,
+    )
+    if not accepted:
+      return
+
+    text = text.strip()
+    if not text:
+      return
+
+    instance.text = text
+    self._refresh_placement_list()
+    self._refresh_preview_signatures()
+    self._update_state()
+
+  def _duplicate_selected_placement(self) -> None:
+    instance = self._selected_instance()
+    if instance is None:
+      return
+
+    placement = self._offset_duplicate_placement(instance.placement)
+    if isinstance(instance, SignatureInstance):
+      duplicate = SignatureInstance(
+        instance_id=f"placement-{self._next_instance_number}",
+        signer_id=instance.signer_id,
+        page_index=self.current_page_index,
+        placement=placement,
       )
+      self.signature_instances.append(duplicate)
     else:
-      self.signature_status_label.setText(
-        f"Signature is placed on page {page_number}. Navigate there to adjust it."
+      duplicate = TextInstance(
+        instance_id=f"text-{self._next_instance_number}",
+        page_index=self.current_page_index,
+        text=instance.text,
+        placement=placement,
+        font_size=instance.font_size,
       )
+      self.text_instances.append(duplicate)
+
+    self._next_instance_number += 1
+    self.selected_instance_id = duplicate.instance_id
+    self._refresh_placement_list()
+    self._refresh_preview_signatures()
+    self._update_state()
+
+  def _offset_duplicate_placement(self, placement: SignaturePlacement) -> SignaturePlacement:
+    offset = 18
+    x = placement.x + offset
+    y = placement.y + offset
+    return SignaturePlacement(
+      x=x,
+      y=y,
+      width=placement.width,
+      height=placement.height,
+      rotation_degrees=placement.rotation_degrees,
+    )
+
+  def _remove_selected_placement(self) -> None:
+    instance = self._selected_instance()
+    if instance is None:
+      return
+
+    if isinstance(instance, SignatureInstance):
+      self.signature_instances = [
+        existing
+        for existing in self.signature_instances
+        if existing.instance_id != instance.instance_id
+      ]
+    else:
+      self.text_instances = [
+        existing
+        for existing in self.text_instances
+        if existing.instance_id != instance.instance_id
+      ]
+    self.selected_instance_id = None
+    self._refresh_placement_list()
+    self._refresh_preview_signatures()
+    self._update_state()
+
+  def _on_signer_selection_changed(
+    self,
+    current: QListWidgetItem | None,
+    previous: QListWidgetItem | None,
+  ) -> None:
+    del previous
+    if current is None:
+      self.selected_signer_id = None
+    else:
+      self.selected_signer_id = current.data(Qt.ItemDataRole.UserRole)
+    self._update_state()
+
+  def _on_placement_selection_changed(
+    self,
+    current: QListWidgetItem | None,
+    previous: QListWidgetItem | None,
+  ) -> None:
+    del previous
+    if current is None:
+      self.selected_instance_id = None
+    else:
+      self.selected_instance_id = current.data(Qt.ItemDataRole.UserRole)
+      instance = self._selected_instance()
+      if instance is not None and instance.page_index != self.current_page_index:
+        self.current_page_index = instance.page_index
+        self._load_current_page()
+
+    self._refresh_preview_signatures()
+    self._update_state()
+
+  def _on_preview_selection_changed(self, instance_id: str) -> None:
+    self.selected_instance_id = instance_id
+    instance = self._selected_instance()
+    if isinstance(instance, SignatureInstance):
+      self.selected_signer_id = instance.signer_id
+    self._refresh_signer_list()
+    self._refresh_placement_list()
+    self._update_state()
+
+  def _refresh_signer_list(self) -> None:
+    self.signer_list.blockSignals(True)
+    self.signer_list.clear()
+    for signer in self.signers:
+      suffix = " ready" if signer.signature_png_bytes else " needs signature"
+      item = QListWidgetItem(f"{signer.name} - {suffix}")
+      item.setData(Qt.ItemDataRole.UserRole, signer.signer_id)
+      self.signer_list.addItem(item)
+      if signer.signer_id == self.selected_signer_id:
+        self.signer_list.setCurrentItem(item)
+    self.signer_list.blockSignals(False)
+
+  def _refresh_placement_list(self) -> None:
+    self.placement_list.blockSignals(True)
+    self.placement_list.clear()
+    all_instances = self._all_instances()
+    for index, instance in enumerate(all_instances, start=1):
+      if isinstance(instance, SignatureInstance):
+        signer = self._signer_by_id(instance.signer_id)
+        signer_name = signer.name if signer is not None else "Unknown signer"
+        rotation = round(instance.placement.rotation_degrees)
+        label = f"{index}. Signature: {signer_name} - page {instance.page_index + 1} - {rotation} deg"
+      else:
+        text = instance.text
+        if len(text) > 24:
+          text = f"{text[:21]}..."
+        label = f"{index}. Text: {text} - page {instance.page_index + 1}"
+      item = QListWidgetItem(label)
+      item.setData(Qt.ItemDataRole.UserRole, instance.instance_id)
+      self.placement_list.addItem(item)
+      if instance.instance_id == self.selected_instance_id:
+        self.placement_list.setCurrentItem(item)
+    self.placement_list.blockSignals(False)
+
+  def _refresh_preview_signatures(self) -> None:
+    current_page_instances = [
+      instance
+      for instance in self.signature_instances
+      if instance.page_index == self.current_page_index
+    ]
+    current_page_text = [
+      instance
+      for instance in self.text_instances
+      if instance.page_index == self.current_page_index
+    ]
+    signature_pixmaps = {
+      signer.signer_id: signer.signature_pixmap
+      for signer in self.signers
+      if signer.signature_pixmap is not None
+    }
+    self.preview.set_signatures(
+      current_page_instances,
+      current_page_text,
+      signature_pixmaps,
+      self.selected_instance_id,
+    )
+
+  def _signature_stamps(self) -> list[SignatureStamp]:
+    stamps = []
+    for instance in self.signature_instances:
+      signer = self._signer_by_id(instance.signer_id)
+      if signer is None or not signer.signature_png_bytes:
+        continue
+      stamps.append(
+        SignatureStamp(
+          page_index=instance.page_index,
+          signature_png_bytes=signer.signature_png_bytes,
+          signature_placement=instance.placement,
+        )
+      )
+    return stamps
+
+  def _text_stamps(self) -> list[TextStamp]:
+    stamps = []
+    for instance in self.text_instances:
+      if not instance.text.strip():
+        continue
+      stamps.append(
+        TextStamp(
+          page_index=instance.page_index,
+          text=instance.text,
+          placement=instance.placement,
+          font_size=instance.font_size,
+        )
+      )
+    return stamps
+
+  def _selected_signer(self) -> Signer | None:
+    if self.selected_signer_id is None:
+      return None
+    return self._signer_by_id(self.selected_signer_id)
+
+  def _signer_by_id(self, signer_id: str) -> Signer | None:
+    for signer in self.signers:
+      if signer.signer_id == signer_id:
+        return signer
+    return None
+
+  def _selected_instance(self) -> SignatureInstance | TextInstance | None:
+    if self.selected_instance_id is None:
+      return None
+    for instance in self._all_instances():
+      if instance.instance_id == self.selected_instance_id:
+        return instance
+    return None
+
+  def _all_instances(self) -> list[SignatureInstance | TextInstance]:
+    return sorted(
+      [*self.signature_instances, *self.text_instances],
+      key=lambda instance: (instance.page_index, instance.instance_id),
+    )
