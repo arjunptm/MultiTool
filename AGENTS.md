@@ -7,6 +7,9 @@ rules, read `docs/ai-collaboration.md`.
 ## Project Basics
 
 - MultiTool is a Windows-only Python desktop app built with PySide6.
+- The active Codex workspace for this project is `W:\Codex Projects\MultiTool`.
+- `W:\multitool` is an older legacy copy and should be left untouched unless
+  the user explicitly asks to inspect or sync it.
 - The app entry point is `app.py`.
 - Source code lives under `app/`.
 - Shared UI components live under `app/ui/`.
