@@ -16,8 +16,8 @@ git status --short --branch
 Create and push a version tag:
 
 ```bash
-git tag v0.1.0
-git push origin v0.1.0
+git tag v0.3.0
+git push origin v0.3.0
 ```
 
 Tags should start with `v`, such as `v0.1.0`.
@@ -38,7 +38,7 @@ When a matching tag is pushed, the workflow:
 The release asset is named like:
 
 ```text
-MultiTool-v0.1.0-windows.zip
+MultiTool-v0.3.0-windows.zip
 ```
 
 Normal pushes to `main` do not create releases.
