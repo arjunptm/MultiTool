@@ -2,7 +2,7 @@ import random
 from pathlib import Path
 
 from PySide6.QtCore import QSize, Qt, QTimer, Signal
-from PySide6.QtGui import QColor, QIcon, QImage, QPainter, QPixmap
+from PySide6.QtGui import QColor, QIcon, QImage, QPainter, QPalette, QPixmap
 from PySide6.QtWidgets import (
   QButtonGroup,
   QColorDialog,
@@ -429,10 +429,12 @@ class QrCodePage(ToolPageBase):
     self.format_combo = QComboBox()
     self.format_combo.setObjectName("qrCombo")
     self.format_combo.addItems(["PNG", "SVG"])
+    self._configure_combo_popup(self.format_combo)
     self.format_combo.currentTextChanged.connect(self._format_changed)
     self.size_combo = QComboBox()
     self.size_combo.setObjectName("qrCombo")
     self.size_combo.addItems(["512 px", "1024 px", "2048 px"])
+    self._configure_combo_popup(self.size_combo)
     self.size_combo.setCurrentText("1024 px")
     output_row.addWidget(QLabel("Format"))
     output_row.addWidget(self.format_combo)
@@ -701,6 +703,16 @@ class QrCodePage(ToolPageBase):
 
   def _format_changed(self, value: str) -> None:
     self.size_combo.setEnabled(value == "PNG")
+
+  def _configure_combo_popup(self, combo: QComboBox) -> None:
+    popup = combo.view()
+    popup.setObjectName("qrComboPopup")
+    palette = popup.palette()
+    palette.setColor(QPalette.ColorRole.Base, QColor("#ffffff"))
+    palette.setColor(QPalette.ColorRole.Text, QColor("#111827"))
+    palette.setColor(QPalette.ColorRole.Highlight, QColor("#dbeafe"))
+    palette.setColor(QPalette.ColorRole.HighlightedText, QColor("#1d4ed8"))
+    popup.setPalette(palette)
 
   def _save_qr_code(self) -> None:
     try:

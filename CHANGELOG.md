@@ -7,11 +7,20 @@ This project uses version tags such as `v0.1.0` for Windows releases. See
 
 ## Unreleased
 
+## v0.3.0 - 2026-07-18
+
 ### Added
 
 - Added an offline website QR Code Generator with live preview, curated frames,
   color presets and custom colors, module and finder-eye styles, uploaded
   logos, scan-safety validation, and PNG or SVG export.
+
+### Fixed
+
+- Fixed invisible text in the QR export format and size dropdown menus on
+  Windows systems using dark application colors.
+- Adjusted the circular badge frame so the QR plate stays fully contained and
+  retains a visible border.
 
 ## v0.2.0 - 2026-07-03
 

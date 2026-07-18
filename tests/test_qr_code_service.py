@@ -84,6 +84,24 @@ class QrCodeServiceTests(unittest.TestCase):
     image = QImage.fromData(output, "PNG")
     self.assertEqual((image.width(), image.height()), (512, 512))
 
+  def test_badge_keeps_a_visible_margin_above_qr_plate(self) -> None:
+    design = QrCodeDesign("example.com", frame_style="badge")
+    image = render_qr_image(design, 512)
+    foreground = QColor(design.foreground_color)
+    background = QColor(design.background_color)
+    center_x = image.width() // 2
+    entered_badge = False
+    plate_start = None
+    for y in range(image.height()):
+      color = image.pixelColor(center_x, y)
+      if color == foreground:
+        entered_badge = True
+      elif entered_badge and color == background:
+        plate_start = y
+        break
+    self.assertIsNotNone(plate_start)
+    self.assertGreaterEqual(plate_start, round(image.height() * 0.12))
+
   def test_svg_is_valid_xml_and_escapes_frame_text(self) -> None:
     output = render_qr_svg(
       QrCodeDesign("example.com", frame_style="rounded_label", frame_text="Scan A&B <now>"),

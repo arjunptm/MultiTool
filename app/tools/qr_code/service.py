@@ -284,7 +284,11 @@ def _paint_frame(
   else:
     painter.drawRoundedRect(outer, unit * 0.055, unit * 0.055)
 
-  if frame_style == "poster":
+  if frame_style == "badge":
+    qr_size = unit * 0.56
+    qr_top = canvas.top() + unit * 0.145
+    text_rect = QRectF(outer.left(), canvas.top() + unit * 0.75, outer.width(), unit * 0.09)
+  elif frame_style == "poster":
     qr_size = unit * 0.70
     qr_top = canvas.top() + unit * 0.19
     text_rect = QRectF(outer.left(), outer.top() + unit * 0.025, outer.width(), unit * 0.085)

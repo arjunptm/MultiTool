@@ -119,6 +119,26 @@ QComboBox#qrCombo:focus {
   padding: 8px 9px;
 }
 
+QAbstractItemView#qrComboPopup {
+  color: #111827;
+  background: #ffffff;
+  border: 1px solid #94a3b8;
+  outline: none;
+  selection-color: #1d4ed8;
+  selection-background-color: #dbeafe;
+}
+
+QAbstractItemView#qrComboPopup::item {
+  min-height: 28px;
+  padding: 4px 8px;
+}
+
+QAbstractItemView#qrComboPopup::item:hover,
+QAbstractItemView#qrComboPopup::item:selected {
+  color: #1d4ed8;
+  background: #dbeafe;
+}
+
 QTabWidget#qrDesignTabs::pane {
   border: 1px solid #e2e8f0;
   border-radius: 8px;

@@ -4,7 +4,7 @@ import unittest
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 from PySide6.QtCore import QByteArray, QBuffer, QIODevice, Qt
-from PySide6.QtGui import QColor, QImage
+from PySide6.QtGui import QColor, QImage, QPalette
 from PySide6.QtWidgets import QApplication
 
 from app.main_window import MainWindow
@@ -39,6 +39,14 @@ class QrCodePageTests(unittest.TestCase):
     self.assertFalse(self.page.size_combo.isEnabled())
     self.page.format_combo.setCurrentText("PNG")
     self.assertTrue(self.page.size_combo.isEnabled())
+
+  def test_export_dropdown_popups_use_visible_light_palette(self) -> None:
+    for combo in (self.page.format_combo, self.page.size_combo):
+      with self.subTest(combo=combo.objectName()):
+        popup = combo.view()
+        self.assertEqual(popup.objectName(), "qrComboPopup")
+        self.assertEqual(popup.palette().color(QPalette.ColorRole.Base).name(), "#ffffff")
+        self.assertEqual(popup.palette().color(QPalette.ColorRole.Text).name(), "#111827")
 
   def test_surprise_me_preserves_url_and_logo(self) -> None:
     self.page.url_input.setText("https://example.com/path")
