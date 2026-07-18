@@ -76,3 +76,7 @@ fields, multiple placements across pages, drag placement, resizing, scaling,
 signature rotation, and saving a signed copy.
 
 `image_resize` and `bulk_rename` are placeholders for future tools.
+
+`qr_code` creates static website QR codes locally. Its page owns the live
+editor and preview, while its service validates URLs and scan-safe design
+settings, builds QR matrices, and paints matching PNG and SVG output.

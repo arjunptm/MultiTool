@@ -16,6 +16,8 @@ can be added over time without changing the core navigation structure.
   optionally flatten pages before combining.
 - Sign PDF: add multiple visual signatures and text fields, such as dates, from
   multiple signers by uploading or drawing each person's signature.
+- QR Code Generator: create offline website QR codes with custom frames,
+  colors, patterns, finder eyes, logos, and matching PNG or SVG export.
 - Resize Images: placeholder for a future batch image resizing utility.
 - Bulk Rename Files: placeholder for a future bulk file renaming utility.
 

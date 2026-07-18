@@ -11,6 +11,9 @@ architecture becomes a real limitation.
 - File format converter
 - Media tools
 - Image support for the PDF combine workflow
+- Additional static QR payloads such as text, email, phone, SMS, and Wi-Fi
+- Structured QR payloads for contacts and calendar events
+- Evaluate privacy and hosting requirements for media and dynamic QR workflows
 
 ## Existing Tool Improvements
 

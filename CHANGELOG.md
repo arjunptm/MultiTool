@@ -7,6 +7,12 @@ This project uses version tags such as `v0.1.0` for Windows releases. See
 
 ## Unreleased
 
+### Added
+
+- Added an offline website QR Code Generator with live preview, curated frames,
+  color presets and custom colors, module and finder-eye styles, uploaded
+  logos, scan-safety validation, and PNG or SVG export.
+
 ## v0.2.0 - 2026-07-03
 
 ### Added

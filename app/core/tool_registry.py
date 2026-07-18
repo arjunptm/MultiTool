@@ -5,6 +5,7 @@ from app.tools.pdf_combine.page import PdfCombinePage
 from app.tools.sign_pdf.page import SignPdfPage
 from app.tools.image_resize.page import ImageResizePage
 from app.tools.bulk_rename.page import BulkRenamePage
+from app.tools.qr_code.page import QrCodePage
 
 
 @dataclass(frozen=True)
@@ -53,6 +54,13 @@ def get_registered_tools() -> list[ToolDefinition]:
       description="Placeholder page for a future batch image resizing utility.",
       category="Images",
       page_class=ImageResizePage,
+    ),
+    ToolDefinition(
+      tool_id="qr_code",
+      name="QR Code Generator",
+      description="Create polished website QR codes with custom frames, colors, patterns, and your own logo.",
+      category="Web",
+      page_class=QrCodePage,
     ),
     ToolDefinition(
       tool_id="bulk_rename",
